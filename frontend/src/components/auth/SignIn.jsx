@@ -67,34 +67,34 @@ const SignIn = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Animated Background Effects */}
       <div className="absolute inset-0">
-        <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-        <div className="absolute top-0 -right-4 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+        <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-600/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+        <div className="absolute top-0 -right-4 w-72 h-72 bg-pink-600/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-cyan-600/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
         <div 
-          className="absolute inset-0 opacity-30"
+          className="absolute inset-0 opacity-20"
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236366F1' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
           }}
         ></div>
       </div>
       
       <div className="max-w-md w-full space-y-8 relative z-10">
         {/* Animated Card */}
-        <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/50 p-8 transform transition-all duration-700 hover:scale-105 hover:shadow-purple-500/25">
+        <div className="bg-slate-800/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/50 p-8 transform transition-all duration-700 hover:scale-105 hover:shadow-purple-500/25">
           {/* Header with Animation */}
           <div className="text-center transform transition-all duration-500">
-            <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-pink-600 shadow-lg animate-pulse-glow">
+            <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-blue-600 shadow-lg animate-pulse-glow">
               <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
               </svg>
             </div>
-            <h2 className="mt-6 text-4xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
+            <h2 className="mt-6 text-4xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
               Welcome Back
             </h2>
-            <p className="mt-3 text-slate-300 text-lg">
+            <p className="mt-3 text-slate-400 text-lg">
               Sign in to your CodeCohort account
             </p>
             <p className="mt-2 text-sm">
@@ -109,7 +109,7 @@ const SignIn = () => {
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg backdrop-blur-sm animate-fade-in">
+            <div className="bg-red-900/50 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg backdrop-blur-sm animate-fade-in">
               {error}
             </div>
           )}
@@ -126,9 +126,9 @@ const SignIn = () => {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 bg-slate-700 border ${
-                  validationErrors.email ? 'border-red-500' : 'border-slate-600'
-                } rounded-lg placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 shadow-sm`}
+                className={`w-full px-4 py-3 bg-slate-700/50 border ${
+                  validationErrors.email ? 'border-red-500/50' : 'border-slate-600/50'
+                } rounded-lg placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 backdrop-blur-sm`}
                 placeholder="Enter your email address"
               />
               {validationErrors.email && (
@@ -148,9 +148,9 @@ const SignIn = () => {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 pr-12 bg-slate-700 border ${
-                    validationErrors.password ? 'border-red-500' : 'border-slate-600'
-                  } rounded-lg placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 shadow-sm`}
+                  className={`w-full px-4 py-3 pr-12 bg-slate-700/50 border ${
+                    validationErrors.password ? 'border-red-500/50' : 'border-slate-600/50'
+                  } rounded-lg placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 backdrop-blur-sm`}
                   placeholder="Enter your password"
                 />
                 <button
@@ -201,7 +201,7 @@ const SignIn = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
                 <span className="absolute left-0 inset-y-0 flex items-center pl-3">
                   {loading ? (

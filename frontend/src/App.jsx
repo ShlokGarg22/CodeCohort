@@ -2,7 +2,7 @@ import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import Navbar from './components/Navbar'
-import ProblemCarousel from './components/ProblemCarousel'
+import Globe from './components/Globe'
 import SignUp from './components/auth/SignUp'
 import SignIn from './components/auth/SignIn'
 import Dashboard from './components/Dashboard'
@@ -69,13 +69,13 @@ const Home = () => {
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-32 relative z-10">
-      <div className="mb-6 fade-in">
-        <h2 className="text-2xl font-bold text-white mb-1">Available Problems</h2>
-        <p className="text-slate-300 text-sm">Find problems that match your skills and join a team to solve them together.</p>
+      <div className="mb-6 fade-in text-center">
+        <h2 className="text-3xl font-bold text-white mb-2">Explore Global Problems</h2>
+        <p className="text-slate-300 text-lg">Discover coding challenges from around the world. Hover over the points to see details.</p>
       </div>
 
       <div className="fade-in" style={{ animationDelay: '0.2s' }}>
-        <ProblemCarousel 
+        <Globe 
           problemsData={problemsData}
           onJoinTeam={handleJoinTeam}
         />
