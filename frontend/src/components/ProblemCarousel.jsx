@@ -144,8 +144,11 @@ const ProblemCarousel = ({ problemsData, onJoinTeam }) => {
           </div>
 
           {/* Instructions */}
-          <div className="absolute top-4 right-4 text-slate-400 text-sm">
-            <p>🖱️ Drag or scroll to rotate</p>
+          <div className="absolute top-4 right-4 text-slate-400 text-sm bg-slate-900/30 backdrop-blur-sm rounded-lg p-3 border border-cyan-400/20">
+            <p className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
+              Drag or scroll to rotate
+            </p>
           </div>
         </div>
       </div>
@@ -154,7 +157,7 @@ const ProblemCarousel = ({ problemsData, onJoinTeam }) => {
       <div className="flex justify-center items-center space-x-4 mt-20 relative z-30">
         <button
           onClick={() => setCurrentIndex((prev) => (prev - 1 + totalCards) % totalCards)}
-          className="bg-slate-700 hover:bg-slate-600 text-white p-3 rounded-full hover-scale shadow-lg"
+          className="bg-slate-700/80 hover:bg-slate-600 text-slate-200 p-3 rounded-full hover-scale shadow-lg border border-cyan-400/30 hover:border-cyan-400/50 transition-all"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -168,8 +171,8 @@ const ProblemCarousel = ({ problemsData, onJoinTeam }) => {
               onClick={() => setCurrentIndex(index)}
               className={`w-4 h-4 rounded-full transition-all duration-300 hover-scale ${
                 index === currentIndex 
-                  ? 'bg-purple-500 scale-125 shadow-lg shadow-purple-500/50 ring-2 ring-purple-300/30' 
-                  : 'bg-slate-600 hover:bg-slate-500'
+                  ? 'bg-cyan-400 scale-125 shadow-lg shadow-cyan-400/50 ring-2 ring-cyan-400/30' 
+                  : 'bg-slate-600 hover:bg-slate-500 border border-slate-500'
               }`}
             />
           ))}
@@ -177,7 +180,7 @@ const ProblemCarousel = ({ problemsData, onJoinTeam }) => {
         
         <button
           onClick={() => setCurrentIndex((prev) => (prev + 1) % totalCards)}
-          className="bg-slate-700 hover:bg-slate-600 text-white p-3 rounded-full hover-scale shadow-lg"
+          className="bg-slate-700/80 hover:bg-slate-600 text-slate-200 p-3 rounded-full hover-scale shadow-lg border border-cyan-400/30 hover:border-cyan-400/50 transition-all"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

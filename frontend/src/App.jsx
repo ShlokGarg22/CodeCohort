@@ -2,7 +2,8 @@ import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import Navbar from './components/Navbar'
-import Globe from './components/Globe'
+import UserProfile from './components/UserProfile'
+import ProblemCarousel from './components/ProblemCarousel'
 import SignUp from './components/auth/SignUp'
 import SignIn from './components/auth/SignIn'
 import Dashboard from './components/Dashboard'
@@ -69,13 +70,13 @@ const Home = () => {
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-32 relative z-10">
-      <div className="mb-6 fade-in text-center">
-        <h2 className="text-3xl font-bold text-white mb-2">Explore Global Problems</h2>
-        <p className="text-slate-300 text-lg">Discover coding challenges from around the world. Hover over the points to see details.</p>
+      <div className="mb-6 fade-in">
+        <h2 className="text-2xl font-bold text-slate-200 mb-1">Available Problems</h2>
+        <p className="text-slate-400 text-sm">Find problems that match your skills and join a team to solve them together.</p>
       </div>
 
       <div className="fade-in" style={{ animationDelay: '0.2s' }}>
-        <Globe 
+        <ProblemCarousel 
           problemsData={problemsData}
           onJoinTeam={handleJoinTeam}
         />
@@ -88,7 +89,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen animated-bg relative overflow-hidden">
+        <div className="min-h-screen relative overflow-hidden" style={{ backgroundColor: '#0a192f' }}>
           {/* Floating Particles */}
           <div className="particle"></div>
           <div className="particle"></div>
@@ -113,11 +114,19 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <UserProfile />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           
           {/* Footer */}
-          <footer className="bg-slate-800/80 backdrop-blur-sm border-t border-slate-700 mt-16 relative z-10 fade-in" style={{ animationDelay: '0.4s' }}>
+          <footer className="bg-slate-800/90 backdrop-blur-sm border-t border-cyan-400/30 mt-16 relative z-10 fade-in" style={{ animationDelay: '0.4s' }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
               <div className="text-center">
                 <p className="text-slate-300 text-sm">

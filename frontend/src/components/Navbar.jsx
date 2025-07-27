@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 
 const Navbar = () => {
   const [isTeamsDropdownOpen, setIsTeamsDropdownOpen] = useState(false)
-  const { user, logout, isAuthenticated } = useAuth()
+  const { logout, isAuthenticated } = useAuth()
   const navigate = useNavigate()
 
   const userTeams = [
@@ -14,7 +14,7 @@ const Navbar = () => {
   ]
 
   const handleProfileClick = () => {
-    navigate('/dashboard')
+    navigate('/profile')
   }
 
   const handleLogout = async () => {
@@ -33,14 +33,14 @@ const Navbar = () => {
   }
 
   return (
-    <nav className="bg-slate-800 border-b border-slate-700 shadow-lg">
+    <nav className="bg-slate-800/95 backdrop-blur-sm border-b border-cyan-400/30 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center">
             <Link 
               to="/" 
-              className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent hover:from-purple-300 hover:to-pink-300 transition-all duration-200 cursor-pointer"
+              className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-slate-300 bg-clip-text text-transparent hover:from-cyan-300 hover:to-slate-200 transition-all duration-200 cursor-pointer"
             >
               CodeCohort
             </Link>
@@ -53,7 +53,7 @@ const Navbar = () => {
                 {/* My Teams Dropdown */}
                 <div className="relative">
                   <button 
-                    className="text-slate-300 hover:text-purple-400 font-medium flex items-center transition-colors"
+                    className="text-slate-300 hover:text-cyan-400 font-medium flex items-center transition-colors"
                     onClick={toggleTeamsDropdown}
                     onMouseEnter={() => setIsTeamsDropdownOpen(true)}
                   >
@@ -94,16 +94,24 @@ const Navbar = () => {
                   )}
                 </div>
                 
+                {/* Dashboard Button */}
+                <Link 
+                  to="/dashboard"
+                  className="text-slate-300 hover:text-cyan-400 font-medium flex items-center transition-colors"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 00-2 2" />
+                  </svg>
+                  Dashboard
+                </Link>
+                
                 {/* User Menu */}
                 <div className="flex items-center space-x-3">
-                  <span className="text-slate-300 text-sm">
-                    Welcome, {user?.fullName}
-                  </span>
-                  
                   {/* Profile Icon */}
                   <button 
-                    className="text-slate-300 hover:text-purple-400 transition-colors" 
+                    className="text-slate-300 hover:text-cyan-400 transition-colors" 
                     onClick={handleProfileClick}
+                    title="Profile"
                   >
                     <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path 
@@ -129,13 +137,13 @@ const Navbar = () => {
                 {/* Authentication Buttons for Non-logged in users */}
                 <Link
                   to="/signin"
-                  className="text-slate-300 hover:text-purple-400 font-medium transition-colors"
+                  className="text-slate-300 hover:text-cyan-400 font-medium transition-colors"
                 >
                   Sign In
                 </Link>
                 <Link
                   to="/signup"
-                  className="bg-purple-600 text-white px-4 py-2 rounded-md font-medium hover:bg-purple-700 transition-colors"
+                  className="bg-cyan-600 text-slate-900 px-4 py-2 rounded-md font-medium hover:bg-cyan-500 transition-colors shadow-lg"
                 >
                   Sign Up
                 </Link>

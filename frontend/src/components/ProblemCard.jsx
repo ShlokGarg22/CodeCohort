@@ -1,18 +1,18 @@
 const ProblemCard = ({ problem, onJoinTeam }) => {
   return (
-    <div className="bg-slate-800 rounded-lg shadow-xl border border-slate-700 p-6 hover:shadow-2xl hover:border-purple-500/50 transition-all duration-300 transform hover:-translate-y-2 hover:scale-105">
+    <div className="bg-slate-800/95 backdrop-blur-sm rounded-lg shadow-xl border border-cyan-400/30 p-6 hover:shadow-2xl hover:border-cyan-400/60 transition-all duration-300 transform hover:-translate-y-2 hover:scale-105 hover:shadow-cyan-400/20">
       <div className="mb-4">
-        <h3 className="text-xl font-semibold text-white mb-2">{problem.title}</h3>
-        <p className="text-slate-300 text-sm mb-4">{problem.description}</p>
+        <h3 className="text-xl font-semibold text-slate-200 mb-2">{problem.title}</h3>
+        <p className="text-slate-400 text-sm mb-4">{problem.description}</p>
       </div>
       
       <div className="mb-4">
-        <h4 className="text-sm font-medium text-slate-200 mb-2">Tech Stack:</h4>
+        <h4 className="text-sm font-medium text-slate-300 mb-2">Tech Stack:</h4>
         <div className="flex flex-wrap gap-2">
           {problem.techStack.map((tech, index) => (
             <span 
               key={index}
-              className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs rounded-full font-medium tech-badge cursor-pointer"
+              className="px-3 py-1 bg-slate-700 text-cyan-400 text-xs rounded-full font-medium tech-badge cursor-pointer border border-cyan-400/30 hover:bg-cyan-400/20 transition-all"
             >
               {tech}
             </span>
@@ -34,7 +34,7 @@ const ProblemCard = ({ problem, onJoinTeam }) => {
         </div>
         <button 
           onClick={onJoinTeam}
-          className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium hover-scale"
+          className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 px-4 py-2 rounded-md text-sm font-medium hover-scale transition-all transform hover:scale-105 shadow-lg hover:shadow-cyan-400/30"
         >
           Join Team
         </button>
