@@ -139,34 +139,34 @@ const SignUp = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Animated Background Effects */}
       <div className="absolute inset-0">
-        <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-600/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-        <div className="absolute top-0 -right-4 w-72 h-72 bg-pink-600/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-cyan-600/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+        <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+        <div className="absolute top-0 -right-4 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
         <div 
-          className="absolute inset-0 opacity-20"
+          className="absolute inset-0 opacity-30"
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236366F1' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
           }}
         ></div>
       </div>
       
       <div className="max-w-md w-full space-y-8 relative z-10">
         {/* Animated Card */}
-        <div className="bg-slate-800/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/50 p-8 transform transition-all duration-700 hover:scale-105 hover:shadow-purple-500/25">
+        <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/50 p-8 transform transition-all duration-700 hover:scale-105 hover:shadow-purple-500/25">
           {/* Header with Animation */}
           <div className="text-center transform transition-all duration-500">
-            <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg transform transition-all duration-500 hover:rotate-12 hover:scale-110">
+            <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-pink-600 shadow-lg transform transition-all duration-500 hover:rotate-12 hover:scale-110">
               <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
               </svg>
             </div>
-            <h2 className="mt-6 text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <h2 className="mt-6 text-4xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
               Join CodeCohort
             </h2>
-            <p className="mt-3 text-slate-300">
+            <p className="mt-3 text-slate-300 text-lg">
               Start your coding journey with us
             </p>
             <div className="mt-2">
@@ -198,13 +198,13 @@ const SignUp = () => {
                 required
                 value={formData.fullName}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 bg-slate-700/50 border ${
-                  validationErrors.fullName ? 'border-red-500/50' : 'border-slate-600/50'
-                } rounded-lg placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 backdrop-blur-sm`}
+                className={`w-full px-4 py-3 bg-slate-700 border ${
+                  validationErrors.fullName ? 'border-red-500' : 'border-slate-600'
+                } rounded-lg placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 shadow-sm`}
                 placeholder="Enter your full name"
               />
               {validationErrors.fullName && (
-                <p className="mt-2 text-sm text-red-400 animate-fade-in">{validationErrors.fullName}</p>
+                <p className="mt-2 text-sm text-red-600 animate-fade-in">{validationErrors.fullName}</p>
               )}
             </div>
 
@@ -219,13 +219,13 @@ const SignUp = () => {
                 required
                 value={formData.username}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 bg-slate-700/50 border ${
-                  validationErrors.username ? 'border-red-500/50' : 'border-slate-600/50'
-                } rounded-lg placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 backdrop-blur-sm`}
+                className={`w-full px-4 py-3 bg-slate-700 border ${
+                  validationErrors.username ? 'border-red-500' : 'border-slate-600'
+                } rounded-lg placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 shadow-sm`}
                 placeholder="Choose a username"
               />
               {validationErrors.username && (
-                <p className="mt-2 text-sm text-red-400 animate-fade-in">{validationErrors.username}</p>
+                <p className="mt-2 text-sm text-red-600 animate-fade-in">{validationErrors.username}</p>
               )}
             </div>
 
@@ -240,13 +240,13 @@ const SignUp = () => {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 bg-slate-700/50 border ${
-                  validationErrors.email ? 'border-red-500/50' : 'border-slate-600/50'
-                } rounded-lg placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 backdrop-blur-sm`}
+                className={`w-full px-4 py-3 bg-slate-700 border ${
+                  validationErrors.email ? 'border-red-500' : 'border-slate-600'
+                } rounded-lg placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 shadow-sm`}
                 placeholder="Enter your email address"
               />
               {validationErrors.email && (
-                <p className="mt-2 text-sm text-red-400 animate-fade-in">{validationErrors.email}</p>
+                <p className="mt-2 text-sm text-red-600 animate-fade-in">{validationErrors.email}</p>
               )}
             </div>
 
@@ -262,9 +262,9 @@ const SignUp = () => {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 pr-12 bg-slate-700/50 border ${
-                    validationErrors.password ? 'border-red-500/50' : 'border-slate-600/50'
-                  } rounded-lg placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 backdrop-blur-sm`}
+                  className={`w-full px-4 py-3 pr-12 bg-slate-700 border ${
+                    validationErrors.password ? 'border-red-500' : 'border-slate-600'
+                  } rounded-lg placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 shadow-sm`}
                   placeholder="Create a password"
                 />
                 <button
@@ -301,12 +301,12 @@ const SignUp = () => {
               {formData.password && (
                 <div className="mt-3 animate-fade-in">
                   <div className="flex items-center space-x-3">
-                    <div className="flex-1 bg-slate-600/50 rounded-full h-2 overflow-hidden">
+                    <div className="flex-1 bg-slate-600 rounded-full h-2 overflow-hidden">
                       <div
                         className={`h-2 rounded-full transition-all duration-500 ${passwordStrength.color} shadow-lg`}
                         style={{ 
                           width: `${(passwordStrength.score / 6) * 100}%`,
-                          boxShadow: passwordStrength.score > 3 ? '0 0 10px rgba(139, 92, 246, 0.5)' : 'none'
+                          boxShadow: passwordStrength.score > 3 ? '0 0 10px rgba(168, 85, 247, 0.5)' : 'none'
                         }}
                       ></div>
                     </div>
@@ -319,25 +319,25 @@ const SignUp = () => {
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                     <div className={`flex items-center space-x-1 transition-colors duration-300 ${
-                      formData.password.length >= 6 ? 'text-green-400' : 'text-slate-500'
+                      formData.password.length >= 6 ? 'text-green-400' : 'text-slate-400'
                     }`}>
                       <span className="w-2 h-2 rounded-full bg-current"></span>
                       <span>6+ characters</span>
                     </div>
                     <div className={`flex items-center space-x-1 transition-colors duration-300 ${
-                      /[A-Z]/.test(formData.password) ? 'text-green-400' : 'text-slate-500'
+                      /[A-Z]/.test(formData.password) ? 'text-green-400' : 'text-slate-400'
                     }`}>
                       <span className="w-2 h-2 rounded-full bg-current"></span>
                       <span>Uppercase</span>
                     </div>
                     <div className={`flex items-center space-x-1 transition-colors duration-300 ${
-                      /[a-z]/.test(formData.password) ? 'text-green-400' : 'text-slate-500'
+                      /[a-z]/.test(formData.password) ? 'text-green-400' : 'text-slate-400'
                     }`}>
                       <span className="w-2 h-2 rounded-full bg-current"></span>
                       <span>Lowercase</span>
                     </div>
                     <div className={`flex items-center space-x-1 transition-colors duration-300 ${
-                      /\d/.test(formData.password) ? 'text-green-400' : 'text-slate-500'
+                      /\d/.test(formData.password) ? 'text-green-400' : 'text-slate-400'
                     }`}>
                       <span className="w-2 h-2 rounded-full bg-current"></span>
                       <span>Number</span>
@@ -347,7 +347,7 @@ const SignUp = () => {
               )}
               
               {validationErrors.password && (
-                <p className="mt-2 text-sm text-red-400 animate-fade-in">{validationErrors.password}</p>
+                <p className="mt-2 text-sm text-red-600 animate-fade-in">{validationErrors.password}</p>
               )}
             </div>
 
@@ -363,9 +363,9 @@ const SignUp = () => {
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 pr-12 bg-slate-700/50 border ${
-                    validationErrors.confirmPassword ? 'border-red-500/50' : 'border-slate-600/50'
-                  } rounded-lg placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 backdrop-blur-sm`}
+                  className={`w-full px-4 py-3 pr-12 bg-slate-700 border ${
+                    validationErrors.confirmPassword ? 'border-red-500' : 'border-slate-600'
+                  } rounded-lg placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 shadow-sm`}
                   placeholder="Confirm your password"
                 />
                 <button
@@ -398,7 +398,7 @@ const SignUp = () => {
                 </button>
               </div>
               {validationErrors.confirmPassword && (
-                <p className="mt-2 text-sm text-red-400 animate-fade-in">{validationErrors.confirmPassword}</p>
+                <p className="mt-2 text-sm text-red-600 animate-fade-in">{validationErrors.confirmPassword}</p>
               )}
             </div>
           </div>
@@ -408,7 +408,7 @@ const SignUp = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
                 <span className="absolute left-0 inset-y-0 flex items-center pl-3">
                   {loading ? (
@@ -433,7 +433,7 @@ const SignUp = () => {
             </div>
 
             <div className="text-center">
-              <p className="text-slate-400 text-sm">
+              <p className="text-slate-300 text-sm">
                 Already have an account?{' '}
                 <Link
                   to="/signin"
