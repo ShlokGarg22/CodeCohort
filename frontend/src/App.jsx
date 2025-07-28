@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './contexts/AuthContext'
 import Navbar from './components/Navbar'
 import UserProfile from './components/UserProfile'
-import ProblemCarousel from './components/ProblemCarousel'
+import InteractiveGlobe from './components/InteractiveGlobe'
 import SignUp from './components/auth/SignUp'
 import SignIn from './components/auth/SignIn'
 import Dashboard from './components/Dashboard'
@@ -76,7 +76,7 @@ const Home = () => {
       </div>
 
       <div className="fade-in" style={{ animationDelay: '0.2s' }}>
-        <ProblemCarousel 
+        <InteractiveGlobe 
           problemsData={problemsData}
           onJoinTeam={handleJoinTeam}
         />
