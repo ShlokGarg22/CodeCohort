@@ -33,7 +33,7 @@ const Navbar = () => {
   }
 
   return (
-    <nav className="bg-slate-800/95 backdrop-blur-sm border-b border-cyan-400/30 shadow-lg">
+    <nav className="bg-slate-800/95 backdrop-blur-sm border-b border-cyan-400/30 shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -71,7 +71,7 @@ const Navbar = () => {
                   {/* Dropdown Menu */}
                   {isTeamsDropdownOpen && (
                     <div 
-                      className="absolute right-0 mt-2 w-48 bg-slate-800 rounded-md shadow-xl border border-slate-600 z-10"
+                      className="absolute right-0 mt-2 w-48 bg-slate-800/98 backdrop-blur-sm rounded-md shadow-xl border border-cyan-400/30 z-[100]"
                       onMouseLeave={() => setIsTeamsDropdownOpen(false)}
                     >
                       <div className="py-1">
