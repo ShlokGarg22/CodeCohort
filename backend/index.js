@@ -8,7 +8,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true
 }));
 app.use(express.json());
@@ -44,7 +44,7 @@ app.use((req, res) => {
 
 async function main(){
     try {
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/codecohort');
+        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/codecohort');
         console.log('Connected to MongoDB');
         
         app.listen(5000, () => {
