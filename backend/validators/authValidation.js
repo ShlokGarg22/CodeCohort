@@ -22,7 +22,12 @@ const signupSchema = z.object({
     .string()
     .min(2, 'Full name must be at least 2 characters')
     .max(50, 'Full name must not exceed 50 characters')
-    .trim()
+    .trim(),
+  
+  role: z
+    .enum(['user', 'creator', 'admin'])
+    .default('user')
+    .optional()
 });
 
 // Signin validation schema

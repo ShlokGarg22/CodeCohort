@@ -35,14 +35,15 @@ export const authService = {
     }
   },
 
-  async register(fullName, email, password, username) {
+  async register(fullName, email, password, username, role = 'user') {
     try {
-      console.log('Attempting registration with:', { fullName, email, username });
+      console.log('Attempting registration with:', { fullName, email, username, role });
       const response = await api.post('/auth/signup', { 
         fullName, 
         email, 
         password, 
-        username 
+        username,
+        role
       });
       console.log('Registration response:', response.data);
       return response.data;

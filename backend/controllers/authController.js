@@ -8,7 +8,7 @@ const signup = async (req, res) => {
   try {
     // Validate input
     const validatedData = signupSchema.parse(req.body);
-    const { username, email, password, fullName } = validatedData;
+    const { username, email, password, fullName, role = 'user' } = validatedData;
 
     // Check if user already exists
     const existingUser = await User.findOne({
@@ -34,7 +34,8 @@ const signup = async (req, res) => {
       username,
       email,
       password,
-      fullName
+      fullName,
+      role
     });
 
     await user.save();
@@ -42,9 +43,15 @@ const signup = async (req, res) => {
     // Generate token
     const token = generateToken(user._id);
 
+    // Send different messages based on role
+    let message = 'User created successfully';
+    if (role === 'creator') {
+      message = 'Creator account created successfully. Your account is pending admin approval.';
+    }
+
     res.status(201).json({
       success: true,
-      message: 'User created successfully',
+      message,
       data: {
         user,
         token
@@ -219,10 +226,128 @@ const logout = async (req, res) => {
   }
 };
 
+// Admin: Get pending creator requests
+const getPendingCreators = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin privileges required.'
+      });
+    }
+
+    const pendingCreators = await User.find({
+      role: 'creator',
+      creatorStatus: 'pending'
+    }).select('-password');
+
+    res.status(200).json({
+      success: true,
+      data: {
+        pendingCreators
+      }
+    });
+
+  } catch (error) {
+    console.error('Get pending creators error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Admin: Approve or reject creator request
+const updateCreatorStatus = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin privileges required.'
+      });
+    }
+
+    const { userId, status } = req.body;
+    
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be "approved" or "rejected".'
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (user.role !== 'creator') {
+      return res.status(400).json({
+        success: false,
+        message: 'User is not a creator'
+      });
+    }
+
+    user.creatorStatus = status;
+    user.approvedBy = req.user._id;
+    user.approvedAt = new Date();
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Creator request ${status} successfully`,
+      data: {
+        user
+      }
+    });
+
+  } catch (error) {
+    console.error('Update creator status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Get all users (admin only)
+const getAllUsers = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin privileges required.'
+      });
+    }
+
+    const users = await User.find({}).select('-password').populate('approvedBy', 'username fullName');
+
+    res.status(200).json({
+      success: true,
+      data: {
+        users
+      }
+    });
+
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 module.exports = {
   signup,
   signin,
   getProfile,
   updateProfile,
-  logout
+  logout,
+  getPendingCreators,
+  updateCreatorStatus,
+  getAllUsers
 };

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, User, Mail, Lock, UserPlus } from 'lucide-react';
+import { Eye, EyeOff, User, Mail, Lock, UserPlus, Shield } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useAuth } from '../../contexts/AuthContext';
 
 const SignUp = () => {
@@ -18,6 +19,7 @@ const SignUp = () => {
     password: '',
     confirmPassword: '',
     fullName: '',
+    role: 'user',
   });
   
   const [showPassword, setShowPassword] = useState(false);
@@ -82,6 +84,7 @@ const SignUp = () => {
       formData.email,
       formData.password,
       formData.username,
+      formData.role
     );
 
     if (result.success) {
@@ -168,6 +171,31 @@ const SignUp = () => {
                   required
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <div className="relative">
+                <Shield className="absolute left-3 top-3 h-4 w-4 text-gray-400 z-10" />
+                <Select
+                  value={formData.role}
+                  onValueChange={(value) => setFormData({ ...formData, role: value })}
+                >
+                  <SelectTrigger className="pl-10">
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="creator">Creator</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.role === 'creator' && (
+                <p className="text-sm text-amber-600 mt-1">
+                  Creator accounts require admin approval before access is granted.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

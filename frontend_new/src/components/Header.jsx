@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, Plus } from 'lucide-react';
 
 const Header = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -10,6 +10,8 @@ const Header = () => {
   const handleLogout = async () => {
     await logout();
   };
+
+  const isApprovedCreator = user?.role === 'creator' && user?.creatorStatus === 'approved';
 
   return (
     <header className="w-full px-6 py-4 bg-white border-b border-gray-100">
@@ -27,6 +29,16 @@ const Header = () => {
                 <User className="h-4 w-4" />
                 <span>Welcome, {user?.username}</span>
               </div>
+              
+              {isApprovedCreator && (
+                <Link to="/create-problem">
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Create Problem
+                  </Button>
+                </Link>
+              )}
+              
               <Link to="/dashboard">
                 <Button variant="outline" size="sm">
                   Dashboard

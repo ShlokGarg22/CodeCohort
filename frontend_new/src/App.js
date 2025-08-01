@@ -7,6 +7,7 @@ import ActiveProblems from "./components/ActiveProblems";
 import SignIn from "./components/auth/SignIn";
 import SignUp from "./components/auth/SignUp";
 import Dashboard from "./components/Dashboard";
+import CreateProblem from "./components/CreateProblem";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Toaster } from "./components/ui/toaster";
@@ -62,6 +63,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/create-problem" 
+              element={
+                <ProtectedRoute>
+                  <CreateProblem />
                 </ProtectedRoute>
               } 
             />

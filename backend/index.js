@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require("mongoose");
 const cors = require('cors');
 const authRouter = require('./routes/auth');
+const problemRouter = require('./routes/problems');
 require('dotenv').config();
 
 const app = express();
@@ -16,6 +17,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/problems", problemRouter);
 
 // Health check route
 app.get('/api/v1/health', (req, res) => {
@@ -44,7 +46,7 @@ app.use((req, res) => {
 
 async function main(){
     try {
-        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/codecohort');
+        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/codecohort');
         console.log('Connected to MongoDB');
         
         app.listen(5000, () => {

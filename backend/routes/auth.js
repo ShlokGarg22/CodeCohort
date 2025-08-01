@@ -6,7 +6,10 @@ const {
   signin,
   getProfile,
   updateProfile,
-  logout
+  logout,
+  getPendingCreators,
+  updateCreatorStatus,
+  getAllUsers
 } = require('../controllers/authController');
 
 // Public routes
@@ -19,5 +22,10 @@ router.use(authenticateToken); // Apply auth middleware to all routes below
 router.get('/profile', getProfile);
 router.put('/profile', updateProfile);
 router.post('/logout', logout);
+
+// Admin routes
+router.get('/admin/pending-creators', getPendingCreators);
+router.put('/admin/creator-status', updateCreatorStatus);
+router.get('/admin/users', getAllUsers);
 
 module.exports = router;

@@ -1,24 +1,50 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Search, Filter, Rocket } from 'lucide-react';
+import { Search, Filter, Rocket, RefreshCw } from 'lucide-react';
 import ProjectCard from './ProjectCard';
-import { mockProjects } from '../data/mock';
+import { problemService } from '../services/problemService';
 
 const ActiveProblems = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [joinedProjects, setJoinedProjects] = useState(new Set());
+  const [problems, setProblems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Get unique categories and difficulties
-  const categories = [...new Set(mockProjects.map(p => p.category))];
-  const difficulties = [...new Set(mockProjects.map(p => p.difficulty))];
+  // Fetch problems from API
+  useEffect(() => {
+    fetchProblems();
+  }, []);
+
+  const fetchProblems = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await problemService.getProblems();
+      if (response.success) {
+        setProblems(response.problems || []);
+      } else {
+        setError('Failed to fetch problems');
+      }
+    } catch (err) {
+      console.error('Error fetching problems:', err);
+      setError(err.message || 'Failed to load problems');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get unique categories and difficulties from fetched problems
+  const categories = [...new Set(problems.map(p => p.category))];
+  const difficulties = [...new Set(problems.map(p => p.difficulty))];
 
   // Filter projects
   const filteredProjects = useMemo(() => {
-    return mockProjects.filter(project => {
+    return problems.filter(project => {
       const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           project.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           project.techStack.some(tech => tech.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -28,7 +54,7 @@ const ActiveProblems = () => {
       
       return matchesSearch && matchesDifficulty && matchesCategory;
     });
-  }, [searchTerm, selectedDifficulty, selectedCategory]);
+  }, [problems, searchTerm, selectedDifficulty, selectedCategory]);
 
   const handleJoinTeam = (projectId) => {
     setJoinedProjects(prev => {
@@ -106,37 +132,74 @@ const ActiveProblems = () => {
             </SelectContent>
           </Select>
 
-          {/* Clear Filters */}
-          <Button 
-            variant="outline" 
-            onClick={clearFilters}
-            className="h-11 px-4"
-          >
-            <Filter size={16} className="mr-2" />
-            Clear
-          </Button>
+          {/* Clear Filters & Refresh */}
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={clearFilters}
+              className="h-11 px-4"
+            >
+              <Filter size={16} className="mr-2" />
+              Clear
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={fetchProblems}
+              disabled={loading}
+              className="h-11 px-4"
+            >
+              <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Results Count */}
         <div className="text-sm text-gray-500">
-          Showing {filteredProjects.length} of {mockProjects.length} projects
+          Showing {filteredProjects.length} of {problems.length} projects
         </div>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="text-center py-12">
+          <RefreshCw size={48} className="mx-auto text-gray-400 animate-spin mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Loading projects...</h3>
+          <p className="text-gray-500">Please wait while we fetch the latest projects</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="text-center py-12">
+          <div className="text-red-400 mb-4">
+            <Search size={48} className="mx-auto" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to load projects</h3>
+          <p className="text-gray-500 mb-4">{error}</p>
+          <Button onClick={fetchProblems} variant="outline">
+            <RefreshCw size={16} className="mr-2" />
+            Try again
+          </Button>
+        </div>
+      )}
+
       {/* Projects Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProjects.map(project => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            onJoinTeam={handleJoinTeam}
-            isJoined={joinedProjects.has(project.id)}
-          />
-        ))}
-      </div>
+      {!loading && !error && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProjects.map(project => (
+            <ProjectCard
+              key={project._id}
+              project={project}
+              onJoinTeam={handleJoinTeam}
+              isJoined={joinedProjects.has(project._id)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Empty State */}
-      {filteredProjects.length === 0 && (
+      {!loading && !error && filteredProjects.length === 0 && problems.length > 0 && (
         <div className="text-center py-12">
           <div className="text-gray-400 mb-4">
             <Search size={48} className="mx-auto" />
@@ -148,6 +211,19 @@ const ActiveProblems = () => {
           <Button onClick={clearFilters} variant="outline">
             Clear all filters
           </Button>
+        </div>
+      )}
+
+      {/* No Projects Created Yet */}
+      {!loading && !error && problems.length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-gray-400 mb-4">
+            <Rocket size={48} className="mx-auto" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No projects yet</h3>
+          <p className="text-gray-500 mb-4">
+            Be the first to create a project challenge for the community!
+          </p>
         </div>
       )}
     </section>
