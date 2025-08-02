@@ -53,6 +53,25 @@ const userSchema = new mongoose.Schema({
   },
   approvedAt: {
     type: Date
+  },
+  joinedProjects: [{
+    project: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Problem'
+    },
+    joinedAt: {
+      type: Date,
+      default: Date.now
+    },
+    role: {
+      type: String,
+      enum: ['creator', 'developer'],
+      default: 'developer'
+    }
+  }],
+  maxProjects: {
+    type: Number,
+    default: 3
   }
 }, {
   timestamps: true

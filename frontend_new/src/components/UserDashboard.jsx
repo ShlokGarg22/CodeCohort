@@ -9,11 +9,21 @@ import {
   Clock, 
   Star,
   TrendingUp,
-  BookOpen
+  BookOpen,
+  Users,
+  Calendar,
+  User,
+  ExternalLink
 } from 'lucide-react';
+import { problemService } from '../services/problemService';
+import { teamService } from '../services/teamService';
+import JoinTeamModal from './JoinTeamModal';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 const UserDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     problemsSolved: 0,
     currentStreak: 0,
@@ -22,44 +32,70 @@ const UserDashboard = () => {
   });
   const [recentActivity, setRecentActivity] = useState([]);
   const [recommendedProblems, setRecommendedProblems] = useState([]);
+  const [availableProjects, setAvailableProjects] = useState([]);
+  const [myProjects, setMyProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Mock data for demonstration
   useEffect(() => {
-    // In a real app, these would be API calls
-    setStats({
-      problemsSolved: 12,
-      currentStreak: 3,
-      totalSubmissions: 28,
-      successRate: 75
-    });
+    fetchDashboardData();
+  }, []);
 
-    setRecentActivity([
-      {
-        id: 1,
-        problemTitle: "Two Sum",
-        status: "Solved",
-        difficulty: "Easy",
-        date: new Date(Date.now() - 24 * 60 * 60 * 1000), // Yesterday
-        timeSpent: "15 min"
-      },
-      {
-        id: 2,
-        problemTitle: "Binary Search",
-        status: "Attempted",
-        difficulty: "Medium",
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-        timeSpent: "45 min"
-      },
-      {
-        id: 3,
-        problemTitle: "Valid Parentheses",
-        status: "Solved",
-        difficulty: "Easy",
-        date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-        timeSpent: "20 min"
-      }
-    ]);
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch available projects (projects user can join)
+      const projectsResponse = await problemService.getAllProblems();
+      const allProjects = projectsResponse.data || [];
+      
+      // Filter projects: exclude user's own projects and those already joined
+      const userJoinedProjectIds = user?.joinedProjects?.map(p => p._id) || [];
+      const available = allProjects.filter(project => 
+        project.creator !== user?.id && // Not created by user
+        !userJoinedProjectIds.includes(project._id) && // Not already joined
+        project.isActive && // Project is active
+        (project.teamMembers?.length || 0) < (project.maxTeamSize || 5) // Has available slots
+      );
+      
+      // Get user's joined projects
+      const joined = allProjects.filter(project => 
+        userJoinedProjectIds.includes(project._id)
+      );
+      
+      setAvailableProjects(available.slice(0, 6)); // Show only first 6
+      setMyProjects(joined);
+      
+      // Mock stats (in real app, these would come from backend)
+      setStats({
+        problemsSolved: joined.length,
+        currentStreak: 3,
+        totalSubmissions: joined.length * 4,
+        successRate: 75
+      });
 
+      // Mock recent activity based on joined projects
+      const mockActivity = joined.slice(0, 3).map((project, index) => ({
+        id: project._id,
+        problemTitle: project.title,
+        status: "Working",
+        difficulty: project.difficulty || "Medium",
+        date: new Date(Date.now() - (index + 1) * 24 * 60 * 60 * 1000),
+        timeSpent: `${Math.floor(Math.random() * 60) + 15} min`
+      }));
+      
+      setRecentActivity(mockActivity);
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+    
+    // Keep the recommended problems mock data
     setRecommendedProblems([
       {
         id: 1,
@@ -86,10 +122,10 @@ const UserDashboard = () => {
         solvedBy: 2100
       }
     ]);
-  }, []);
+  };
 
   const getDifficultyColor = (difficulty) => {
-    switch (difficulty.toLowerCase()) {
+    switch (difficulty?.toLowerCase()) {
       case 'easy': return 'bg-green-100 text-green-800';
       case 'medium': return 'bg-yellow-100 text-yellow-800';
       case 'hard': return 'bg-red-100 text-red-800';
@@ -98,12 +134,52 @@ const UserDashboard = () => {
   };
 
   const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case 'solved': return 'bg-green-100 text-green-800';
+      case 'working': return 'bg-blue-100 text-blue-800';
       case 'attempted': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const handleJoinProject = (project) => {
+    // Check if user can join more projects (max 3)
+    if (myProjects.length >= 3) {
+      toast.error('You can only join a maximum of 3 projects');
+      return;
+    }
+    
+    setSelectedProject(project);
+    setIsJoinModalOpen(true);
+  };
+
+  const handleJoinSubmit = async (projectId, message) => {
+    try {
+      await teamService.requestToJoinTeam(projectId, message);
+      toast.success('Join request sent successfully! The creator will review your request.');
+      
+      // Remove project from available list
+      setAvailableProjects(prev => prev.filter(p => p._id !== projectId));
+    } catch (error) {
+      console.error('Error sending join request:', error);
+      toast.error(error.message || 'Failed to send join request');
+    }
+  };
+
+  const handleGoToProject = (projectId) => {
+    navigate(`/project/${projectId}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-500">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -172,6 +248,125 @@ const UserDashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold">{stats.successRate}%</div>
             <p className="text-xs text-muted-foreground">Problem success rate</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* My Projects */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              My Projects ({myProjects.length}/3)
+            </CardTitle>
+            <CardDescription>
+              Projects you've joined as a team member
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {myProjects.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>You haven't joined any projects yet</p>
+                <p className="text-sm text-gray-400">Browse available projects below to get started</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {myProjects.map((project) => (
+                  <div key={project._id} className="flex items-center justify-between p-3 border rounded-lg hover:shadow-sm transition-shadow">
+                    <div className="flex-1">
+                      <h4 className="font-medium">{project.title}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        {project.difficulty && (
+                          <Badge className={getDifficultyColor(project.difficulty)}>
+                            {project.difficulty}
+                          </Badge>
+                        )}
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <User className="h-3 w-3" />
+                          <span>{project.teamMembers?.length || 0}/{project.maxTeamSize || 5}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Created by {project.creator?.fullName}
+                      </p>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleGoToProject(project._id)}
+                      className="flex items-center gap-1"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Open
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Available Projects to Join */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              Available Projects
+            </CardTitle>
+            <CardDescription>
+              Discover and join exciting projects
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {availableProjects.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>No available projects to join</p>
+                <p className="text-sm text-gray-400">Check back later for new opportunities</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {availableProjects.map((project) => {
+                  const teamSlotsUsed = project.teamMembers?.length || 0;
+                  const maxTeamSize = project.maxTeamSize || 5;
+                  
+                  return (
+                    <div key={project._id} className="flex items-center justify-between p-3 border rounded-lg hover:shadow-sm transition-shadow">
+                      <div className="flex-1">
+                        <h4 className="font-medium">{project.title}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          {project.difficulty && (
+                            <Badge className={getDifficultyColor(project.difficulty)}>
+                              {project.difficulty}
+                            </Badge>
+                          )}
+                          <div className="flex items-center gap-1 text-xs text-gray-500">
+                            <Users className="h-3 w-3" />
+                            <span>{teamSlotsUsed}/{maxTeamSize} members</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-gray-500">
+                            <Calendar className="h-3 w-3" />
+                            <span>{new Date(project.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          by {project.creator?.fullName}
+                        </p>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleJoinProject(project)}
+                        disabled={myProjects.length >= 3}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        Join
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -254,6 +449,17 @@ const UserDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Join Team Modal */}
+      <JoinTeamModal
+        isOpen={isJoinModalOpen}
+        onClose={() => {
+          setIsJoinModalOpen(false);
+          setSelectedProject(null);
+        }}
+        onSubmit={handleJoinSubmit}
+        project={selectedProject}
+      />
     </div>
   );
 };

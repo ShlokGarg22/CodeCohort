@@ -118,13 +118,14 @@ const ProjectCard = ({ project, onJoinTeam, isJoined }) => {
           </div>
           
           <Button 
-            onClick={() => onJoinTeam(project._id)}
+            onClick={() => onJoinTeam(project)}
             className={`bg-gray-900 hover:bg-gray-800 text-white px-6 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2 ${
               isJoined ? 'bg-green-600 hover:bg-green-700' : ''
             }`}
             size="sm"
+            disabled={isJoined}
           >
-            <span>{isJoined ? 'Joined' : 'Join Team'}</span>
+            <span>{isJoined ? 'Request Sent' : 'Join Team'}</span>
             <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
           </Button>
         </div>

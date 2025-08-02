@@ -82,7 +82,33 @@ const problemSchema = new mongoose.Schema({
   participants: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]
+  }],
+  teamMembers: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    joinedAt: {
+      type: Date,
+      default: Date.now
+    },
+    role: {
+      type: String,
+      enum: ['creator', 'developer'],
+      default: 'developer'
+    }
+  }],
+  maxTeamSize: {
+    type: Number,
+    default: 5,
+    min: 1,
+    max: 20
+  },
+  currentTeamSize: {
+    type: Number,
+    default: 0
+  }
 }, {
   timestamps: true
 });

@@ -4,21 +4,37 @@ import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Search, Filter, Rocket, RefreshCw } from 'lucide-react';
 import ProjectCard from './ProjectCard';
+import JoinTeamModal from './JoinTeamModal';
 import { problemService } from '../services/problemService';
+import { useAuth } from '../contexts/AuthContext';
+import { useSocket } from '../contexts/SocketContext';
+import { toast } from 'sonner';
 
 const ActiveProblems = () => {
+  const { isAuthenticated, user } = useAuth();
+  const { sendJoinRequest } = useSocket();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [joinedProjects, setJoinedProjects] = useState(new Set());
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+  const [userJoinedProjects, setUserJoinedProjects] = useState(new Set());
 
   // Fetch problems from API
   useEffect(() => {
     fetchProblems();
   }, []);
+
+  // Get user's joined projects
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const joinedProjectIds = user.joinedProjects?.map(p => p._id) || [];
+      setUserJoinedProjects(new Set(joinedProjectIds));
+    }
+  }, [isAuthenticated, user]);
 
   const fetchProblems = async () => {
     try {
@@ -28,11 +44,11 @@ const ActiveProblems = () => {
       if (response.success) {
         setProblems(response.problems || []);
       } else {
-        setError('Failed to fetch problems');
+        setError('Failed to load projects');
       }
     } catch (err) {
       console.error('Error fetching problems:', err);
-      setError(err.message || 'Failed to load problems');
+      setError('Failed to load projects');
     } finally {
       setLoading(false);
     }
@@ -56,16 +72,45 @@ const ActiveProblems = () => {
     });
   }, [problems, searchTerm, selectedDifficulty, selectedCategory]);
 
-  const handleJoinTeam = (projectId) => {
-    setJoinedProjects(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(projectId)) {
-        newSet.delete(projectId);
-      } else {
-        newSet.add(projectId);
-      }
-      return newSet;
-    });
+  const handleJoinTeam = (project) => {
+    if (!isAuthenticated) {
+      toast.error('Please sign in to join a project');
+      return;
+    }
+
+    if (userJoinedProjects.size >= 3) {
+      toast.error('You can only join a maximum of 3 projects');
+      return;
+    }
+
+    setSelectedProject(project);
+    setIsJoinModalOpen(true);
+  };
+
+  const handleJoinSubmit = async (projectId, message) => {
+    try {
+      if (!selectedProject) return;
+
+      // Send real-time join request via Socket.io
+      sendJoinRequest(
+        projectId,
+        selectedProject.createdBy._id,
+        {
+          id: user._id,
+          username: user.username,
+          fullName: user.fullName,
+          profileImage: user.profileImage
+        },
+        message
+      );
+
+      toast.success('Join request sent successfully! The creator will review your request.');
+      setIsJoinModalOpen(false);
+      setSelectedProject(null);
+    } catch (error) {
+      console.error('Error sending join request:', error);
+      toast.error('Failed to send join request');
+    }
   };
 
   const clearFilters = () => {
@@ -192,11 +237,22 @@ const ActiveProblems = () => {
               key={project._id}
               project={project}
               onJoinTeam={handleJoinTeam}
-              isJoined={joinedProjects.has(project._id)}
+              isJoined={userJoinedProjects.has(project._id)}
             />
           ))}
         </div>
       )}
+
+      {/* Join Team Modal */}
+      <JoinTeamModal
+        isOpen={isJoinModalOpen}
+        onClose={() => {
+          setIsJoinModalOpen(false);
+          setSelectedProject(null);
+        }}
+        onSubmit={handleJoinSubmit}
+        project={selectedProject}
+      />
 
       {/* Empty State */}
       {!loading && !error && filteredProjects.length === 0 && problems.length > 0 && (

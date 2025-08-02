@@ -44,10 +44,27 @@ const createProblem = async (req, res) => {
     // Create new problem
     const problem = new Problem({
       ...validatedData,
-      createdBy: req.user._id
+      createdBy: req.user._id,
+      maxTeamSize: parseInt(validatedData.teamSize.split('-')[1]) || 5, // Extract max from "2-5 members"
+      currentTeamSize: 1,
+      teamMembers: [{
+        user: req.user._id,
+        role: 'creator'
+      }]
     });
 
     await problem.save();
+
+    // Add to user's joined projects
+    const User = require('../models/User');
+    await User.findByIdAndUpdate(req.user._id, {
+      $push: {
+        joinedProjects: {
+          project: problem._id,
+          role: 'creator'
+        }
+      }
+    });
 
     // Populate creator info
     await problem.populate('createdBy', 'username fullName');
@@ -148,25 +165,38 @@ const getProblemById = async (req, res) => {
     const { id } = req.params;
 
     const problem = await Problem.findById(id)
-      .populate('createdBy', 'username fullName');
+      .populate('createdBy', 'username fullName profileImage')
+      .populate('teamMembers.user', 'username fullName profileImage');
 
-    if (!problem || !problem.isActive) {
+    if (!problem) {
       return res.status(404).json({
         success: false,
-        message: 'Problem not found'
+        message: 'Project not found'
       });
     }
 
-    // If user is not the creator, hide hidden test cases
-    if (req.user._id.toString() !== problem.createdBy._id.toString() && req.user.role !== 'admin') {
-      problem.testCases = problem.testCases.filter(tc => !tc.isHidden);
+    // Check if user has access to this project
+    const isCreator = problem.createdBy?._id.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+    const isTeamMember = problem.teamMembers?.some(member => 
+      member.user._id.toString() === req.user._id.toString()
+    );
+
+    if (!isCreator && !isAdmin && !isTeamMember) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You are not a member of this project.'
+      });
+    }
+
+    // If user is not the creator, hide sensitive information
+    if (!isCreator && req.user.role !== 'admin') {
+      problem.testCases = problem.testCases?.filter(tc => !tc.isHidden) || [];
     }
 
     res.status(200).json({
       success: true,
-      data: {
-        problem
-      }
+      data: problem
     });
 
   } catch (error) {

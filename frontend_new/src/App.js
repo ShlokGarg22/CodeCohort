@@ -8,9 +8,11 @@ import SignIn from "./components/auth/SignIn";
 import SignUp from "./components/auth/SignUp";
 import Dashboard from "./components/Dashboard";
 import CreateProblem from "./components/CreateProblem";
+import ProjectBoard from "./components/ProjectBoard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { Toaster } from "./components/ui/toaster";
+import { SocketProvider } from "./contexts/SocketContext";
+import { Toaster } from "sonner";
 
 const Home = () => {
   return (
@@ -39,46 +41,56 @@ function App() {
   return (
     <div className="App">
       <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route 
-              path="/signin" 
-              element={
-                <AuthRedirect>
-                  <SignIn />
-                </AuthRedirect>
-              } 
-            />
-            <Route 
-              path="/signup" 
-              element={
-                <AuthRedirect>
-                  <SignUp />
-                </AuthRedirect>
-              } 
-            />
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/create-problem" 
-              element={
-                <ProtectedRoute>
-                  <CreateProblem />
-                </ProtectedRoute>
-              } 
-            />
-            {/* Catch all route - redirect to home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-        <Toaster />
+        <SocketProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route 
+                path="/signin" 
+                element={
+                  <AuthRedirect>
+                    <SignIn />
+                  </AuthRedirect>
+                } 
+              />
+              <Route 
+                path="/signup" 
+                element={
+                  <AuthRedirect>
+                    <SignUp />
+                  </AuthRedirect>
+                } 
+              />
+              <Route 
+                path="/dashboard" 
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/create-problem" 
+                element={
+                  <ProtectedRoute>
+                    <CreateProblem />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/project/:projectId" 
+                element={
+                  <ProtectedRoute>
+                    <ProjectBoard />
+                  </ProtectedRoute>
+                } 
+              />
+              {/* Catch all route - redirect to home */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+          <Toaster />
+        </SocketProvider>
       </AuthProvider>
     </div>
   );
