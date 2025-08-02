@@ -42,6 +42,33 @@ A modern full-stack web application for collaborative coding and project managem
 - **CORS Protection**: Configured for secure frontend-backend communication
 - **Error Handling**: Comprehensive error handling and user-friendly messages
 
+---
+
+## 🚀 Planned & Suggested Features
+
+### 🏆 Gamification & Community
+- **Leaderboard**: Track and display top users based on solved problems or points.
+- **Badges & Achievements**: Reward users for milestones and participation.
+- **User Roles & Permissions**: Admin, mentor, and student roles with different access levels.
+
+### 📝 Problem & Submission Enhancements
+- **Problem Tags & Search**: Tag problems and enable advanced filtering/search.
+- **Submission History**: Users can view their past submissions and results.
+- **Automated Grading**: Evaluate code submissions and provide instant feedback.
+- **Discussion Threads**: Allow users to discuss problems and solutions.
+
+### 📢 Notifications & Communication
+- **Email Notifications**: For registration, password reset, and submission results.
+- **In-app Notifications**: Real-time alerts for collaboration and updates.
+- **Chat/Collaboration Tools**: Real-time chat or code collaboration features.
+
+### 🛠️ Developer Experience
+- **API Documentation**: Swagger/OpenAPI docs for backend endpoints.
+- **Comprehensive Testing**: Unit and integration tests for backend and frontend.
+- **CI/CD Pipeline**: Automated testing and deployment.
+
+---
+
 ## 🛠️ Tech Stack
 
 ### Frontend
