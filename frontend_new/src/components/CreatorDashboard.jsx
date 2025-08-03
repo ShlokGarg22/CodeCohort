@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSocket } from '../contexts/SocketContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -26,6 +27,7 @@ import { toast } from 'sonner';
 
 const CreatorDashboard = () => {
   const { user } = useAuth();
+  const { joinRequests: socketJoinRequests, respondToJoinRequest } = useSocket();
   const navigate = useNavigate();
   const [problems, setProblems] = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
@@ -35,6 +37,9 @@ const CreatorDashboard = () => {
   const isApproved = user?.creatorStatus === 'approved';
   const isPending = user?.creatorStatus === 'pending';
   const isRejected = user?.creatorStatus === 'rejected';
+
+  // Use socket join requests if available, otherwise fall back to API
+  const displayJoinRequests = socketJoinRequests.length > 0 ? socketJoinRequests : joinRequests;
 
   useEffect(() => {
     if (isApproved) {
@@ -69,18 +74,35 @@ const CreatorDashboard = () => {
     }
   };
 
-  const handleJoinRequestAction = async (requestId, action) => {
+  const handleJoinRequestAction = async (request, action) => {
     try {
-      if (action === 'approve') {
-        await teamService.approveJoinRequest(requestId);
-        toast.success('Join request approved successfully!');
+      // Use Socket.io if it's a socket request, otherwise use API
+      if (request.requestId) {
+        // Socket.io request
+        await teamService.respondToJoinRequest(request.requestId, action);
+        
+        // Send real-time response via Socket.io
+        respondToJoinRequest(
+          request.requester.id,
+          request.projectId,
+          action === 'approve',
+          { title: request.projectTitle }
+        );
+        
+        toast.success(`Join request ${action}d successfully!`);
       } else {
-        await teamService.rejectJoinRequest(requestId);
-        toast.success('Join request rejected');
+        // API request
+        if (action === 'approve') {
+          await teamService.approveJoinRequest(request._id);
+          toast.success('Join request approved successfully!');
+        } else {
+          await teamService.rejectJoinRequest(request._id);
+          toast.success('Join request rejected');
+        }
+        
+        // Remove the request from the list
+        setJoinRequests(prev => prev.filter(req => req._id !== request._id));
       }
-      
-      // Remove the request from the list
-      setJoinRequests(prev => prev.filter(req => req._id !== requestId));
       
       // Refresh problems to update team member count
       fetchMyProblems();
@@ -229,7 +251,7 @@ const CreatorDashboard = () => {
       </div>
 
       {/* Join Requests */}
-      {joinRequests.length > 0 && (
+      {displayJoinRequests.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -245,14 +267,18 @@ const CreatorDashboard = () => {
               <div className="text-center py-4">Loading requests...</div>
             ) : (
               <div className="space-y-4">
-                {joinRequests.map((request) => (
-                  <div key={request._id} className="flex items-center justify-between p-4 border rounded-lg bg-blue-50">
+                {displayJoinRequests.map((request) => (
+                  <div key={request._id || request.requestId} className="flex items-center justify-between p-4 border rounded-lg bg-blue-50">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <User className="h-4 w-4" />
-                        <span className="font-medium">{request.user.fullName}</span>
+                        <span className="font-medium">
+                          {request.requester?.fullName || request.requester?.username || request.user?.fullName}
+                        </span>
                         <span className="text-sm text-gray-500">wants to join</span>
-                        <span className="font-medium">{request.project.title}</span>
+                        <span className="font-medium">
+                          {request.projectTitle || request.project?.title}
+                        </span>
                       </div>
                       {request.message && (
                         <p className="text-sm text-gray-600 mb-2 pl-6">
@@ -260,14 +286,16 @@ const CreatorDashboard = () => {
                         </p>
                       )}
                       <div className="flex items-center gap-4 text-xs text-gray-500 pl-6">
-                        <span>Requested {new Date(request.createdAt).toLocaleDateString()}</span>
-                        <span>Team: {request.project.teamMembers?.length || 0}/{request.project.maxTeamSize || 5}</span>
+                        <span>
+                          Requested {new Date(request.timestamp || request.createdAt).toLocaleDateString()}
+                        </span>
+                        <span>Team: {request.project?.teamMembers?.length || 0}/{request.project?.maxTeamSize || 5}</span>
                       </div>
                     </div>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        onClick={() => handleJoinRequestAction(request._id, 'approve')}
+                        onClick={() => handleJoinRequestAction(request, 'approve')}
                         className="bg-green-600 hover:bg-green-700"
                       >
                         <UserCheck className="h-4 w-4 mr-1" />
@@ -276,7 +304,7 @@ const CreatorDashboard = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleJoinRequestAction(request._id, 'reject')}
+                        onClick={() => handleJoinRequestAction(request, 'reject')}
                         className="text-red-600 border-red-600 hover:bg-red-50"
                       >
                         <UserX className="h-4 w-4 mr-1" />
