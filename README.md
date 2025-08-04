@@ -4,7 +4,8 @@ A modern full-stack web application for collaborative coding and project managem
 
 ## 📋 Table of Contents
 
-- [Features](#-features)
+ - [Features](#-features)
+ - [Team Collaboration & Joining](#-team-collaboration--joining)
 - [Tech Stack](#-tech-stack)
 - [Project Structure](#-project-structure)
 - [Getting Started](#-getting-started)
@@ -41,6 +42,11 @@ A modern full-stack web application for collaborative coding and project managem
 - **Password Security**: Strong password requirements and secure hashing
 - **CORS Protection**: Configured for secure frontend-backend communication
 - **Error Handling**: Comprehensive error handling and user-friendly messages
+
+### 🧑‍🤝‍🧑 Team Collaboration & Joining
+- **Join Requests**: Developers can send requests to join project teams.
+- **Approval Workflow**: Project creators can approve or reject join requests.
+- **Real-time Notifications**: Receive live updates on join requests and responses via Socket.io.
 
 ---
 
