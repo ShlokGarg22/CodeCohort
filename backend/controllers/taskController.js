@@ -31,11 +31,20 @@ const createTask = async (req, res) => {
   try {
     const { projectId } = req.params;
     
+    console.log('Create task request:', {
+      projectId,
+      body: req.body,
+      bodyType: typeof req.body,
+      contentType: req.headers['content-type']
+    });
+    
     // Validate input
     const validatedData = createTaskSchema.parse(req.body);
 
     // Check if project exists and user has permission
-    const project = await Problem.findById(projectId).populate('teamMembers.user');
+    const project = await Problem.findById(projectId)
+      .populate('teamMembers.user')
+      .populate('createdBy');
     if (!project) {
       return res.status(404).json({
         success: false,
@@ -43,14 +52,30 @@ const createTask = async (req, res) => {
       });
     }
 
-    // Check permissions - Only creators and admins can create tasks
+    // Check permissions - Project creators, admins, and team members can create tasks
     const isProjectCreator = project.createdBy.toString() === req.user._id.toString();
     const isAdmin = req.user.role === 'admin';
+    const isTeamMember = project.teamMembers.some(
+      member => member.user._id.toString() === req.user._id.toString()
+    );
     
-    if (!isProjectCreator && !isAdmin) {
+    console.log('Task creation permission check:', {
+      userId: req.user._id.toString(),
+      userRole: req.user.role,
+      projectCreator: project.createdBy.toString(),
+      isProjectCreator,
+      isAdmin,
+      isTeamMember,
+      teamMembers: project.teamMembers.map(m => ({
+        userId: m.user._id.toString(),
+        role: m.role
+      }))
+    });
+    
+    if (!isProjectCreator && !isAdmin && !isTeamMember) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied. Only project creators and admins can create tasks.'
+        message: 'Access denied. You must be a project creator, admin, or team member to create tasks.'
       });
     }
 

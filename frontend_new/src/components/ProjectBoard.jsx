@@ -29,10 +29,16 @@ const ProjectBoard = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchProject();
-  }, [projectId]);
+    if (user) {
+      fetchProject();
+    }
+  }, [projectId, user]);
 
   const fetchProject = async () => {
+    if (!user) {
+      return; // Wait for user to be loaded
+    }
+    
     try {
       setLoading(true);
       const response = await problemService.getProblemById(projectId);
@@ -79,7 +85,7 @@ const ProjectBoard = () => {
     }
   };
 
-  if (loading) {
+  if (!user || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -122,7 +128,7 @@ const ProjectBoard = () => {
     );
   }
 
-  const isCreator = project.creator._id === user?.id;
+  const isCreator = project.creator?._id === user?.id || project.createdBy?._id === user?.id;
   const isAdmin = user?.role === 'admin';
   const isTeamMember = project.teamMembers?.some(member => member._id === user?.id);
 
@@ -238,14 +244,14 @@ const ProjectBoard = () => {
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Project Creator</h4>
                   <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={project.creator.profileImage} />
+                      <AvatarImage src={project.creator?.profileImage || project.createdBy?.profileImage} />
                       <AvatarFallback className="text-xs">
-                        {project.creator.fullName?.charAt(0).toUpperCase()}
+                        {(project.creator?.fullName || project.createdBy?.fullName)?.charAt(0)?.toUpperCase() || 'C'}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium text-sm">{project.creator.fullName}</p>
-                      <p className="text-xs text-gray-500">@{project.creator.username}</p>
+                      <p className="font-medium text-sm">{project.creator?.fullName || project.createdBy?.fullName || 'Creator'}</p>
+                      <p className="text-xs text-gray-500">@{project.creator?.username || project.createdBy?.username || 'creator'}</p>
                     </div>
                   </div>
                 </div>
@@ -257,19 +263,19 @@ const ProjectBoard = () => {
                       Developers ({project.teamMembers.length})
                     </h4>
                     <div className="space-y-2">
-                      {project.teamMembers.map((member) => (
-                        <div key={member._id} className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                      {project.teamMembers?.map((member) => (
+                        <div key={member?._id || Math.random()} className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={member.profileImage} />
+                            <AvatarImage src={member?.profileImage} />
                             <AvatarFallback className="text-xs">
-                              {member.fullName?.charAt(0).toUpperCase()}
+                              {member?.fullName?.charAt(0)?.toUpperCase() || 'U'}
                             </AvatarFallback>
                           </Avatar>
                           <div>
                             <p className="font-medium text-sm">
-                              {member._id === user?.id ? 'You' : member.fullName}
+                              {member?._id === user?.id ? 'You' : member?.fullName || 'Unknown'}
                             </p>
-                            <p className="text-xs text-gray-500">@{member.username}</p>
+                            <p className="text-xs text-gray-500">@{member?.username || 'unknown'}</p>
                           </div>
                         </div>
                       ))}

@@ -1,17 +1,17 @@
 const mongoose = require('mongoose');
 
 const teamRequestSchema = new mongoose.Schema({
-  projectId: {
+  project: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Problem',
     required: true
   },
-  userId: {
+  requester: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  creatorId: {
+  creator: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
@@ -36,9 +36,9 @@ const teamRequestSchema = new mongoose.Schema({
 });
 
 // Compound index to prevent duplicate requests
-teamRequestSchema.index({ projectId: 1, userId: 1 }, { unique: true });
-teamRequestSchema.index({ creatorId: 1, status: 1 });
-teamRequestSchema.index({ userId: 1, status: 1 });
+teamRequestSchema.index({ project: 1, requester: 1 }, { unique: true });
+teamRequestSchema.index({ creator: 1, status: 1 });
+teamRequestSchema.index({ requester: 1, status: 1 });
 
 const TeamRequest = mongoose.model('TeamRequest', teamRequestSchema);
 

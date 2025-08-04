@@ -29,25 +29,40 @@ const KanbanBoard = ({ projectId, projectData }) => {
   const [filterPriority, setFilterPriority] = useState('all');
 
   // Check user permissions
-  const isCreator = user?.role === 'creator' && projectData?.creator === user?.id;
+  const isCreator = user?.role === 'creator' && (
+    projectData?.creator?._id === user?.id || 
+    projectData?.creator === user?.id || 
+    projectData?.createdBy?._id === user?.id ||
+    projectData?.createdBy === user?.id
+  );
   const isAdmin = user?.role === 'admin';
-  const isDeveloper = user?.role === 'user' && projectData?.teamMembers?.includes(user?.id);
+  const isDeveloper = user?.role === 'user' && (
+    projectData?.teamMembers?.some(member => 
+      member?._id === user?.id || member?.user?._id === user?.id || member === user?.id
+    ) || projectData?.teamMembers?.includes(user?.id)
+  );
   
   const canManageTasks = isCreator || isAdmin;
   const canViewAllTasks = isCreator || isAdmin;
+  const canCreateTasks = isCreator || isAdmin || isDeveloper;
 
   useEffect(() => {
-    fetchTasks();
-  }, [projectId]);
+    if (user && projectId) {
+      fetchTasks();
+    }
+  }, [projectId, user]);
 
   const fetchTasks = async () => {
     try {
       setLoading(true);
       const response = await taskService.getProjectTasks(projectId);
-      setTasks(response.data || []);
+      // Backend returns { success: true, data: { tasks } }
+      const tasksData = response?.data?.tasks || response?.tasks || [];
+      setTasks(Array.isArray(tasksData) ? tasksData : []);
     } catch (error) {
       console.error('Error fetching tasks:', error);
       toast.error('Failed to load tasks');
+      setTasks([]); // Ensure tasks is always an array
     } finally {
       setLoading(false);
     }
@@ -79,7 +94,7 @@ const KanbanBoard = ({ projectId, projectData }) => {
     
     try {
       await taskService.deleteTask(taskId);
-      setTasks(prev => prev.filter(task => task._id !== taskId));
+      setTasks(prev => (Array.isArray(prev) ? prev : []).filter(task => task._id !== taskId));
       toast.success('Task deleted successfully');
     } catch (error) {
       console.error('Error deleting task:', error);
@@ -91,13 +106,13 @@ const KanbanBoard = ({ projectId, projectData }) => {
     try {
       if (editingTask) {
         const response = await taskService.updateTask(editingTask._id, taskData);
-        setTasks(prev => prev.map(task => 
-          task._id === editingTask._id ? response.data : task
+        setTasks(prev => (Array.isArray(prev) ? prev : []).map(task => 
+          task._id === editingTask._id ? response.data.task || response.data : task
         ));
         toast.success('Task updated successfully');
       } else {
-        const response = await taskService.createTask({ ...taskData, projectId });
-        setTasks(prev => [...prev, response.data]);
+        const response = await taskService.createTask(projectId, taskData);
+        setTasks(prev => [...(Array.isArray(prev) ? prev : []), response.data.task || response.data]);
         toast.success('Task created successfully');
       }
       setIsTaskModalOpen(false);
@@ -121,7 +136,8 @@ const KanbanBoard = ({ projectId, projectData }) => {
 
     const taskId = active.id;
     const newStatus = over.id;
-    const task = tasks.find(t => t._id === taskId);
+    const tasksArray = Array.isArray(tasks) ? tasks : [];
+    const task = tasksArray.find(t => t._id === taskId);
 
     if (!task) return;
 
@@ -134,18 +150,19 @@ const KanbanBoard = ({ projectId, projectData }) => {
     if (task.status === newStatus) return;
 
     try {
-      // Optimistically update UI
-      setTasks(prev => prev.map(t => 
-        t._id === taskId ? { ...t, status: newStatus } : t
+      // Update in backend using updateTask
+      const response = await taskService.updateTask(taskId, { status: newStatus });
+      
+      // Update UI with response data
+      setTasks(prev => (Array.isArray(prev) ? prev : []).map(t => 
+        t._id === taskId ? response.data.task || response.data : t
       ));
-
-      // Update in backend
-      await taskService.updateTaskStatus(taskId, newStatus, 0);
+      
       toast.success('Task moved successfully');
     } catch (error) {
       console.error('Error updating task status:', error);
       // Revert optimistic update
-      setTasks(prev => prev.map(t => 
+      setTasks(prev => (Array.isArray(prev) ? prev : []).map(t => 
         t._id === taskId ? { ...t, status: task.status } : t
       ));
       toast.error('Failed to move task');
@@ -154,7 +171,7 @@ const KanbanBoard = ({ projectId, projectData }) => {
 
   // Filter tasks based on permissions and filters
   const getFilteredTasks = () => {
-    let filteredTasks = tasks;
+    let filteredTasks = Array.isArray(tasks) ? tasks : [];
 
     // Apply role-based filtering
     if (isDeveloper && !canViewAllTasks) {
@@ -177,7 +194,7 @@ const KanbanBoard = ({ projectId, projectData }) => {
     return getFilteredTasks().filter(task => task.status === columnId);
   };
 
-  if (loading) {
+  if (!user || loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -230,7 +247,7 @@ const KanbanBoard = ({ projectId, projectData }) => {
             </div>
           )}
           
-          {canManageTasks && (
+          {canCreateTasks && (
             <Button onClick={handleCreateTask} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               Add Task
@@ -283,7 +300,9 @@ const KanbanBoard = ({ projectId, projectData }) => {
         }}
         onSubmit={handleTaskSubmit}
         task={editingTask}
-        projectMembers={projectData?.teamMembers || []}
+        projectMembers={projectData?.teamMembers?.map(member => 
+          member.user ? member.user : member
+        ) || []}
         canAssignTasks={canManageTasks}
       />
     </div>

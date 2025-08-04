@@ -38,7 +38,7 @@ const TaskModal = ({
     status: 'Backlog',
     priority: 'Medium',
     dueDate: null,
-    assignee: '',
+    assignee: 'unassigned',
     tags: []
   });
   const [newTag, setNewTag] = useState('');
@@ -54,7 +54,7 @@ const TaskModal = ({
         status: task.status || 'Backlog',
         priority: task.priority || 'Medium',
         dueDate: task.dueDate ? new Date(task.dueDate) : null,
-        assignee: task.assignee?._id || '',
+        assignee: task.assignee?._id || 'unassigned',
         tags: task.tags || []
       });
     } else {
@@ -64,7 +64,7 @@ const TaskModal = ({
         status: 'Backlog',
         priority: 'Medium',
         dueDate: null,
-        assignee: '',
+        assignee: 'unassigned',
         tags: []
       });
     }
@@ -99,7 +99,7 @@ const TaskModal = ({
       const submitData = {
         ...formData,
         dueDate: formData.dueDate ? formData.dueDate.toISOString() : null,
-        assignee: formData.assignee || null
+        assignee: formData.assignee === 'unassigned' ? null : formData.assignee
       };
       
       await onSubmit(submitData);
@@ -234,7 +234,7 @@ const TaskModal = ({
                     <SelectValue placeholder="Select assignee" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unassigned</SelectItem>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
                     {projectMembers.map((member) => (
                       <SelectItem key={member._id} value={member._id}>
                         {member.fullName}

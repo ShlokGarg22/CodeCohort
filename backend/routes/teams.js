@@ -5,6 +5,7 @@ const {
   requestToJoinTeam,
   respondToJoinRequest,
   getProjectJoinRequests,
+  getCreatorJoinRequests,
   getUserJoinRequests,
   leaveTeam,
   getTeamMembers
@@ -16,6 +17,7 @@ router.use(authenticateToken);
 // Team join request routes
 router.post('/projects/:projectId/join', requestToJoinTeam);
 router.get('/projects/:projectId/requests', getProjectJoinRequests);
+router.get('/requests/creator', getCreatorJoinRequests);
 router.put('/requests/:requestId/respond', respondToJoinRequest);
 router.get('/requests/my', getUserJoinRequests);
 router.get('/projects/:projectId/team', getTeamMembers);

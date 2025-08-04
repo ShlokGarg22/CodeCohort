@@ -32,11 +32,21 @@ export const teamService = {
 
   async getPendingRequests() {
     try {
-      const response = await api.get('/requests/pending');
+      const response = await api.get('/requests/my');
       return response.data;
     } catch (error) {
       console.error('Get pending requests error:', error);
       throw new Error(error.response?.data?.message || 'Failed to fetch pending requests');
+    }
+  },
+
+  async getJoinRequests() {
+    try {
+      const response = await api.get('/requests/creator');
+      return response.data;
+    } catch (error) {
+      console.error('Get join requests error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch join requests');
     }
   },
 

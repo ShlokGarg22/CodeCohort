@@ -70,6 +70,7 @@ const requestToJoinTeam = async (req, res) => {
     const teamRequest = new TeamRequest({
       project: projectId,
       requester: req.user._id,
+      creator: project.createdBy,
       message: validatedData.message
     });
 
@@ -264,6 +265,36 @@ const getProjectJoinRequests = async (req, res) => {
   }
 };
 
+// Get all join requests for a creator's projects
+const getCreatorJoinRequests = async (req, res) => {
+  try {
+    // Get all projects created by this user
+    const projects = await Problem.find({ createdBy: req.user._id });
+    const projectIds = projects.map(p => p._id);
+
+    // Get all pending requests for these projects
+    const requests = await TeamRequest.find({
+      project: { $in: projectIds },
+      status: 'pending'
+    })
+    .populate('requester', 'username fullName profileImage')
+    .populate('project', 'title description')
+    .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: requests
+    });
+
+  } catch (error) {
+    console.error('Get creator join requests error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 // Get user's join request history
 const getUserJoinRequests = async (req, res) => {
   try {
@@ -390,6 +421,7 @@ module.exports = {
   requestToJoinTeam,
   respondToJoinRequest,
   getProjectJoinRequests,
+  getCreatorJoinRequests,
   getUserJoinRequests,
   leaveTeam,
   getTeamMembers
