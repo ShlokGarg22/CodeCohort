@@ -24,10 +24,25 @@ const signupSchema = z.object({
     .max(50, 'Full name must not exceed 50 characters')
     .trim(),
   
+  githubProfile: z
+    .string()
+    .url('Please provide a valid URL')
+    .regex(/^https:\/\/github\.com\/[a-zA-Z0-9_-]+\/?$/, 'Please provide a valid GitHub profile URL (https://github.com/username)')
+    .optional(),
+  
   role: z
     .enum(['user', 'creator', 'admin'])
     .default('user')
     .optional()
+}).refine((data) => {
+  // GitHub profile is required for users
+  if (data.role === 'user' && !data.githubProfile) {
+    return false;
+  }
+  return true;
+}, {
+  message: "GitHub profile URL is required for user accounts",
+  path: ["githubProfile"]
 });
 
 // Signin validation schema
@@ -61,6 +76,12 @@ const updateProfileSchema = z.object({
   profileImage: z
     .string()
     .url('Invalid URL format')
+    .optional(),
+
+  githubProfile: z
+    .string()
+    .url('Please provide a valid URL')
+    .regex(/^https:\/\/github\.com\/[a-zA-Z0-9_-]+\/?$/, 'Please provide a valid GitHub profile URL (https://github.com/username)')
     .optional()
 });
 

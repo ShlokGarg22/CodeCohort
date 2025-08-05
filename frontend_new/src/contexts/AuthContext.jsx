@@ -53,10 +53,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (fullName, email, password, username, role = 'user') => {
+  const register = async (fullName, email, password, username, role = 'user', githubProfile = '') => {
     setAuthLoading(true);
     try {
-      const response = await authService.register(fullName, email, password, username, role);
+      const response = await authService.register(fullName, email, password, username, role, githubProfile);
       setUser(response.data.user);
       setIsAuthenticated(true);
       localStorage.setItem('token', response.data.token);

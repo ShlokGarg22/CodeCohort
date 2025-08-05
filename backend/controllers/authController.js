@@ -8,7 +8,7 @@ const signup = async (req, res) => {
   try {
     // Validate input
     const validatedData = signupSchema.parse(req.body);
-    const { username, email, password, fullName, role = 'user' } = validatedData;
+    const { username, email, password, fullName, role = 'user', githubProfile } = validatedData;
 
     // Check if user already exists
     const existingUser = await User.findOne({
@@ -35,7 +35,8 @@ const signup = async (req, res) => {
       email,
       password,
       fullName,
-      role
+      role,
+      githubProfile
     });
 
     await user.save();

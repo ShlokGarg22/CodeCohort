@@ -31,6 +31,19 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  githubProfile: {
+    type: String,
+    required: function() {
+      return this.role === 'user';
+    },
+    validate: {
+      validator: function(v) {
+        if (this.role !== 'user') return true;
+        return /^https:\/\/github\.com\/[a-zA-Z0-9_-]+\/?$/.test(v);
+      },
+      message: 'Please provide a valid GitHub profile URL (https://github.com/username)'
+    }
+  },
   isVerified: {
     type: Boolean,
     default: false

@@ -35,15 +35,16 @@ export const authService = {
     }
   },
 
-  async register(fullName, email, password, username, role = 'user') {
+  async register(fullName, email, password, username, role = 'user', githubProfile = '') {
     try {
-      console.log('Attempting registration with:', { fullName, email, username, role });
+      console.log('Attempting registration with:', { fullName, email, username, role, githubProfile });
       const response = await api.post('/auth/signup', { 
         fullName, 
         email, 
         password, 
         username,
-        role
+        role,
+        githubProfile
       });
       console.log('Registration response:', response.data);
       return response.data;

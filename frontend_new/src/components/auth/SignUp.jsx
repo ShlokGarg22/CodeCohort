@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, User, Mail, Lock, UserPlus, Shield } from 'lucide-react';
+import { Eye, EyeOff, User, Mail, Lock, UserPlus, Shield, Github } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -20,6 +20,7 @@ const SignUp = () => {
     confirmPassword: '',
     fullName: '',
     role: 'user',
+    githubProfile: '',
   });
   
   const [showPassword, setShowPassword] = useState(false);
@@ -78,13 +79,36 @@ const SignUp = () => {
       return;
     }
 
+    // Check GitHub profile for user role
+    if (formData.role === 'user') {
+      if (!formData.githubProfile) {
+        setAlert({
+          show: true,
+          message: 'GitHub profile URL is required for user accounts',
+          type: 'error'
+        });
+        return;
+      }
+
+      const githubRegex = /^https:\/\/github\.com\/[a-zA-Z0-9_-]+\/?$/;
+      if (!githubRegex.test(formData.githubProfile)) {
+        setAlert({
+          show: true,
+          message: 'Please provide a valid GitHub profile URL (https://github.com/username)',
+          type: 'error'
+        });
+        return;
+      }
+    }
+
     // Create account
     const result = await register(
       formData.fullName,
       formData.email,
       formData.password,
       formData.username,
-      formData.role
+      formData.role,
+      formData.githubProfile
     );
 
     if (result.success) {
@@ -197,6 +221,28 @@ const SignUp = () => {
                 </p>
               )}
             </div>
+
+            {formData.role === 'user' && (
+              <div className="space-y-2">
+                <Label htmlFor="githubProfile">GitHub Profile URL</Label>
+                <div className="relative">
+                  <Github className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="githubProfile"
+                    name="githubProfile"
+                    type="url"
+                    placeholder="https://github.com/yourusername"
+                    value={formData.githubProfile}
+                    onChange={handleChange}
+                    className="pl-10"
+                    required={formData.role === 'user'}
+                  />
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  Your GitHub profile will be visible to other users and team members.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
