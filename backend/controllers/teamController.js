@@ -191,7 +191,13 @@ const respondToJoinRequest = async (req, res) => {
 
       // Add project to user's joined projects
       await User.findByIdAndUpdate(teamRequest.requester._id, {
-        $addToSet: { joinedProjects: project._id }
+        $push: { 
+          joinedProjects: {
+            project: project._id,
+            role: 'developer',
+            joinedAt: new Date()
+          }
+        }
       });
     }
 

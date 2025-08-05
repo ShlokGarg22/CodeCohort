@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { User, LogOut, Plus, Users, ChevronDown, Bell } from 'lucide-react';
+import { User, LogOut, Plus, Users, ChevronDown, Bell, Settings, UserCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,8 +20,12 @@ const Header = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const { joinRequests, notifications } = useSocket();
   const navigate = useNavigate();
+  const location = useLocation();
   const [userProjects, setUserProjects] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // Check if user is on dashboard page
+  const isOnDashboard = location.pathname === '/dashboard';
 
   const handleLogout = async () => {
     await logout();
@@ -64,20 +69,26 @@ const Header = () => {
   return (
     <header className="w-full px-6 py-4 bg-white border-b border-gray-100">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           <Link to="/" className="text-2xl font-bold text-gray-900 tracking-tight hover:text-gray-700">
             CodeCohort
           </Link>
+          {isAuthenticated && (
+            <div className="flex items-center space-x-2">
+              <span className="text-gray-400">|</span>
+              <span className="text-sm font-medium text-gray-600">
+                Welcome back, {user?.fullName?.split(' ')[0] || user?.username}!
+              </span>
+              <Badge variant="outline" className="text-xs font-normal">
+                Code Build Cohort
+              </Badge>
+            </div>
+          )}
         </div>
         
         <div className="flex items-center space-x-4">
           {isAuthenticated ? (
             <>
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <User className="h-4 w-4" />
-                <span>Welcome, {user?.username}</span>
-              </div>
-
               {/* Notification Bell */}
               <div className="relative">
                 <Button
@@ -142,10 +153,42 @@ const Header = () => {
                   Dashboard
                 </Button>
               </Link>
-              <Button onClick={handleLogout} variant="outline" size="sm">
-                <LogOut className="h-4 w-4 mr-1" />
-                Logout
-              </Button>
+
+              {/* Profile Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.profileImage} alt={user?.fullName} />
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm font-semibold">
+                        {user?.fullName?.charAt(0) || user?.username?.charAt(0) || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      <p className="font-medium">{user?.fullName || user?.username}</p>
+                      <p className="w-[200px] truncate text-sm text-muted-foreground">
+                        {user?.email}
+                      </p>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="cursor-pointer">
+                      <UserCircle className="mr-2 h-4 w-4" />
+                      <span>My Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : (
             <>

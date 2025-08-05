@@ -35,16 +35,17 @@ export const authService = {
     }
   },
 
-  async register(fullName, email, password, username, role = 'user', githubProfile = '') {
+  async register(fullName, email, password, username, role = 'user', githubProfile = '', profileImage = '') {
     try {
-      console.log('Attempting registration with:', { fullName, email, username, role, githubProfile });
+      console.log('Attempting registration with:', { fullName, email, username, role, githubProfile, profileImage: profileImage ? 'provided' : 'none' });
       const response = await api.post('/auth/signup', { 
         fullName, 
         email, 
         password, 
         username,
         role,
-        githubProfile
+        githubProfile,
+        profileImage
       });
       console.log('Registration response:', response.data);
       return response.data;
@@ -73,6 +74,26 @@ export const authService = {
       console.error('Logout error:', error);
     } finally {
       localStorage.removeItem('token');
+    }
+  },
+
+  async updateProfile(profileData) {
+    try {
+      const response = await api.put('/auth/profile', profileData);
+      return response.data;
+    } catch (error) {
+      console.error('Update profile error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to update profile');
+    }
+  },
+
+  async changePassword(passwordData) {
+    try {
+      const response = await api.put('/auth/change-password', passwordData);
+      return response.data;
+    } catch (error) {
+      console.error('Change password error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to change password');
     }
   }
 };

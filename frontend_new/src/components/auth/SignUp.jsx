@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Alert, AlertDescription } from '../ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useAuth } from '../../contexts/AuthContext';
+import ProfilePictureSelector from '../ProfilePictureSelector';
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ const SignUp = () => {
     fullName: '',
     role: 'user',
     githubProfile: '',
+    profileImage: '',
   });
   
   const [showPassword, setShowPassword] = useState(false);
@@ -108,7 +110,8 @@ const SignUp = () => {
       formData.password,
       formData.username,
       formData.role,
-      formData.githubProfile
+      formData.githubProfile,
+      formData.profileImage
     );
 
     if (result.success) {
@@ -131,7 +134,7 @@ const SignUp = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-lg">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
           <CardDescription className="text-center">
@@ -196,6 +199,13 @@ const SignUp = () => {
                 />
               </div>
             </div>
+
+            <ProfilePictureSelector
+              value={formData.profileImage}
+              onChange={(imageUrl) => setFormData({ ...formData, profileImage: imageUrl })}
+              fullName={formData.fullName}
+              username={formData.username}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>

@@ -6,6 +6,7 @@ const {
   signin,
   getProfile,
   updateProfile,
+  changePassword,
   logout,
   getPendingCreators,
   updateCreatorStatus,
@@ -21,6 +22,7 @@ router.use(authenticateToken); // Apply auth middleware to all routes below
 
 router.get('/profile', getProfile);
 router.put('/profile', updateProfile);
+router.put('/change-password', changePassword);
 router.post('/logout', logout);
 
 // Admin routes

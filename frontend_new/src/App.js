@@ -9,6 +9,7 @@ import SignUp from "./components/auth/SignUp";
 import Dashboard from "./components/Dashboard";
 import CreateProblem from "./components/CreateProblem";
 import ProjectBoard from "./components/ProjectBoard";
+import ProfilePage from "./components/ProfilePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SocketProvider } from "./contexts/SocketContext";
@@ -66,6 +67,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/profile" 
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
                   </ProtectedRoute>
                 } 
               />

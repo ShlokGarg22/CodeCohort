@@ -7,6 +7,7 @@ const authRouter = require('./routes/auth');
 const problemRouter = require('./routes/problems');
 const taskRouter = require('./routes/tasks');
 const teamRouter = require('./routes/teams');
+const uploadRouter = require('./routes/upload');
 require('dotenv').config();
 
 const app = express();
@@ -83,6 +84,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/problems", problemRouter);
+app.use("/api/v1/upload", uploadRouter);
 app.use("/api/v1", taskRouter);
 app.use("/api/v1", teamRouter);
 
@@ -96,10 +98,11 @@ app.get('/api/v1/health', (req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.log("----------------GETTING ERROR-------------------")
+  console.error(err);
   res.status(500).json({
     success: false,
-    message: 'Something went wrong!'
+    message: err || 'Internal Server Error'
   });
 });
 

@@ -30,6 +30,11 @@ const signupSchema = z.object({
     .regex(/^https:\/\/github\.com\/[a-zA-Z0-9_-]+\/?$/, 'Please provide a valid GitHub profile URL (https://github.com/username)')
     .optional(),
   
+  profileImage: z
+    .string()
+    .optional()
+    .default(''),
+  
   role: z
     .enum(['user', 'creator', 'admin'])
     .default('user')
@@ -75,14 +80,22 @@ const updateProfileSchema = z.object({
   
   profileImage: z
     .string()
-    .url('Invalid URL format')
     .optional(),
 
   githubProfile: z
     .string()
-    .url('Please provide a valid URL')
-    .regex(/^https:\/\/github\.com\/[a-zA-Z0-9_-]+\/?$/, 'Please provide a valid GitHub profile URL (https://github.com/username)')
     .optional()
+    .refine(
+      (val) => {
+        // Allow empty strings or valid GitHub URLs
+        if (!val || val === '') return true;
+        return /^https:\/\/github\.com\/[a-zA-Z0-9_-]+\/?$/.test(val);
+      },
+      {
+        message: 'Please provide a valid GitHub profile URL (https://github.com/username) or leave it empty'
+      }
+    )
+    .transform((val) => val === '' ? undefined : val)
 });
 
 module.exports = {

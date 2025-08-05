@@ -20,7 +20,8 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-    minlength: 6
+    minlength: 6,
+    select: false
   },
   fullName: {
     type: String,
@@ -28,6 +29,10 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
   profileImage: {
+    type: String,
+    default: ''
+  },
+  cloudinaryPublicId: {
     type: String,
     default: ''
   },

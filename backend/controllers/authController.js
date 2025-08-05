@@ -8,7 +8,7 @@ const signup = async (req, res) => {
   try {
     // Validate input
     const validatedData = signupSchema.parse(req.body);
-    const { username, email, password, fullName, role = 'user', githubProfile } = validatedData;
+    const { username, email, password, fullName, role = 'user', githubProfile, profileImage } = validatedData;
 
     // Check if user already exists
     const existingUser = await User.findOne({
@@ -36,7 +36,8 @@ const signup = async (req, res) => {
       password,
       fullName,
       role,
-      githubProfile
+      githubProfile,
+      profileImage
     });
 
     await user.save();
@@ -196,8 +197,20 @@ const updateProfile = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.errors.map(err => ({
-          field: err.path.join('.'),
+        errors: error.errors?.map(err => ({
+          field: err.path?.join('.') || 'unknown',
+          message: err.message
+        })) || []
+      });
+    }
+
+    // Handle mongoose validation errors
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Database validation error',
+        errors: Object.values(error.errors || {}).map(err => ({
+          field: err.path || 'unknown',
           message: err.message
         }))
       });
@@ -220,6 +233,62 @@ const logout = async (req, res) => {
     });
   } catch (error) {
     console.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Change password
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters long'
+      });
+    }
+
+    // Get user with password
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+
+  } catch (error) {
+    console.error('Change password error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -347,6 +416,7 @@ module.exports = {
   signin,
   getProfile,
   updateProfile,
+  changePassword,
   logout,
   getPendingCreators,
   updateCreatorStatus,
