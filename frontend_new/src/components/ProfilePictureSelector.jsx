@@ -5,13 +5,13 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Upload, Camera, Sparkles, Check, Loader2 } from 'lucide-react';
-import { animatedAvatars, getAvatarDataUrl } from '../data/animatedAvatars';
+import { animatedAvatars, humanAvatars, getAvatarDataUrl } from '../data/animatedAvatars';
 import { toast } from 'sonner';
 import imageUploadService from '../services/imageUploadService';
 import { useAuth } from '../contexts/AuthContext';
 
 const ProfilePictureSelector = ({ value, onChange, fullName, username }) => {
-  const [activeTab, setActiveTab] = useState('animated');
+  const [activeTab, setActiveTab] = useState('human');
   const [selectedAnimated, setSelectedAnimated] = useState(null);
   const [uploadedImage, setUploadedImage] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -60,7 +60,7 @@ const ProfilePictureSelector = ({ value, onChange, fullName, username }) => {
     setSelectedAnimated(avatar.id);
     setUploadedImage(null);
     onChange(avatarUrl);
-    setActiveTab('animated');
+    setActiveTab(activeTab); // Keep current tab active
   };
 
   const clearSelection = () => {
@@ -101,13 +101,22 @@ const ProfilePictureSelector = ({ value, onChange, fullName, username }) => {
       {/* Tab Selection */}
       <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
         <Button
+          variant={activeTab === 'human' ? 'default' : 'ghost'}
+          size="sm"
+          className="flex-1"
+          onClick={() => setActiveTab('human')}
+        >
+          <Sparkles className="h-4 w-4 mr-2" />
+          Human
+        </Button>
+        <Button
           variant={activeTab === 'animated' ? 'default' : 'ghost'}
           size="sm"
           className="flex-1"
           onClick={() => setActiveTab('animated')}
         >
           <Sparkles className="h-4 w-4 mr-2" />
-          Animated
+          Abstract
         </Button>
         <Button
           variant={activeTab === 'upload' ? 'default' : 'ghost'}
@@ -120,12 +129,48 @@ const ProfilePictureSelector = ({ value, onChange, fullName, username }) => {
         </Button>
       </div>
 
+      {/* Human Avatars Tab */}
+      {activeTab === 'human' && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-4 gap-3">
+              {humanAvatars.map((avatar) => (
+                <div key={avatar.id} className="relative">
+                  <button
+                    type="button"
+                    className={`relative w-full aspect-square rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
+                      selectedAnimated === avatar.id 
+                        ? 'border-blue-500 ring-2 ring-blue-200' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => selectAnimatedAvatar(avatar)}
+                  >
+                    <div 
+                      className="w-full h-full"
+                      dangerouslySetInnerHTML={{ __html: avatar.svg }}
+                    />
+                    {selectedAnimated === avatar.id && (
+                      <div className="absolute inset-0 bg-blue-500 bg-opacity-20 flex items-center justify-center">
+                        <Check className="h-6 w-6 text-blue-600 bg-white rounded-full p-1" />
+                      </div>
+                    )}
+                  </button>
+                  <p className="text-xs text-center mt-1 text-gray-600 truncate">
+                    {avatar.name}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Animated Avatars Tab */}
       {activeTab === 'animated' && (
         <Card>
           <CardContent className="p-4">
             <div className="grid grid-cols-4 gap-3">
-              {animatedAvatars.map((avatar) => (
+              {[...animatedAvatars.filter(avatar => avatar.isAbstract), ...humanAvatars].map((avatar) => (
                 <div key={avatar.id} className="relative">
                   <button
                     type="button"

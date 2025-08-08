@@ -52,10 +52,17 @@ export const teamService = {
 
   async respondToJoinRequest(requestId, action) {
     try {
+      console.log('TeamService: Responding to request:', { requestId, action });
       const response = await api.put(`/requests/${requestId}/respond`, { action });
+      console.log('TeamService: Response received:', response.data);
       return response.data;
     } catch (error) {
       console.error('Respond to join request error:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
       throw new Error(error.response?.data?.message || 'Failed to respond to request');
     }
   },

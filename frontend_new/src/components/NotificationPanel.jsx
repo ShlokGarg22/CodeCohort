@@ -17,10 +17,13 @@ const NotificationPanel = ({ isOpen, onClose }) => {
 
   const handleRequestResponse = async (request, approved) => {
     try {
+      console.log('Responding to request:', { request, approved });
       setProcessingRequests(prev => new Set([...prev, request.requestId]));
 
       // Call API to handle the request
-      await teamService.respondToJoinRequest(request.requestId, approved ? 'approve' : 'reject');
+      console.log('Calling teamService.respondToJoinRequest with:', request.requestId, approved ? 'approve' : 'reject');
+      const response = await teamService.respondToJoinRequest(request.requestId, approved ? 'approve' : 'reject');
+      console.log('API response:', response);
 
       // Send real-time notification via Socket.io
       respondToJoinRequest(
@@ -36,7 +39,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
       toast.success(`Request ${approved ? 'approved' : 'rejected'} successfully`);
     } catch (error) {
       console.error('Error responding to request:', error);
-      toast.error('Failed to respond to request');
+      toast.error(`Failed to respond to request: ${error.message}`);
     } finally {
       setProcessingRequests(prev => {
         const newSet = new Set(prev);
