@@ -2,6 +2,7 @@ const User = require('../models/User');
 const { generateToken } = require('../middleware/auth');
 const { signupSchema, signinSchema, updateProfileSchema } = require('../validators/authValidation');
 const { z } = require('zod');
+const passport = require('passport');
 
 // Signup controller
 const signup = async (req, res) => {
@@ -411,6 +412,22 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+// GitHub OAuth callback handler
+const githubCallback = async (req, res) => {
+  try {
+    // Generate JWT token for the authenticated user
+    const token = generateToken(req.user._id);
+    
+    // Redirect to frontend with token
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
+  } catch (error) {
+    console.error('GitHub callback error:', error);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/signin?error=authentication_failed`);
+  }
+};
+
 module.exports = {
   signup,
   signin,
@@ -420,5 +437,6 @@ module.exports = {
   logout,
   getPendingCreators,
   updateCreatorStatus,
-  getAllUsers
+  getAllUsers,
+  githubCallback
 };

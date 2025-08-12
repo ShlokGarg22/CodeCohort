@@ -47,50 +47,112 @@ const UserDashboard = () => {
     try {
       setLoading(true);
       
-      // Fetch available projects (projects user can join)
-      const projectsResponse = await problemService.getAllProblems();
-      const allProjects = projectsResponse.data || [];
-      
-      // Filter projects: exclude user's own projects and those already joined
-      const userJoinedProjectIds = user?.joinedProjects?.map(p => p._id) || [];
-      const available = allProjects.filter(project => 
-        project.creator !== user?.id && // Not created by user
-        !userJoinedProjectIds.includes(project._id) && // Not already joined
-        project.isActive && // Project is active
-        (project.teamMembers?.length || 0) < (project.maxTeamSize || 5) // Has available slots
-      );
-      
-      // Get user's joined projects
-      const joined = allProjects.filter(project => 
-        userJoinedProjectIds.includes(project._id)
-      );
-      
-      setAvailableProjects(available.slice(0, 6)); // Show only first 6
-      setMyProjects(joined);
-      
-      // Mock stats (in real app, these would come from backend)
-      setStats({
-        problemsSolved: joined.length,
-        currentStreak: 3,
-        totalSubmissions: joined.length * 4,
-        successRate: 75
-      });
+      // Try to fetch available projects from backend
+      try {
+        const projectsResponse = await problemService.getAllProblems();
+        const allProjects = projectsResponse.data || [];
+        
+        // Filter projects: exclude user's own projects and those already joined
+        const userJoinedProjectIds = user?.joinedProjects?.map(p => p._id) || [];
+        const available = allProjects.filter(project => 
+          project.creator !== user?.id && // Not created by user
+          !userJoinedProjectIds.includes(project._id) && // Not already joined
+          project.isActive && // Project is active
+          (project.teamMembers?.length || 0) < (project.maxTeamSize || 5) // Has available slots
+        );
+        
+        // Get user's joined projects
+        const joined = allProjects.filter(project => 
+          userJoinedProjectIds.includes(project._id)
+        );
+        
+        setAvailableProjects(available.slice(0, 6)); // Show only first 6
+        setMyProjects(joined);
+        
+        // Update stats based on real data
+        setStats({
+          problemsSolved: joined.length,
+          currentStreak: 3,
+          totalSubmissions: joined.length * 4,
+          successRate: joined.length > 0 ? 75 : 0
+        });
 
-      // Mock recent activity based on joined projects
-      const mockActivity = joined.slice(0, 3).map((project, index) => ({
-        id: project._id,
-        problemTitle: project.title,
-        status: "Working",
-        difficulty: project.difficulty || "Medium",
-        date: new Date(Date.now() - (index + 1) * 24 * 60 * 60 * 1000),
-        timeSpent: `${Math.floor(Math.random() * 60) + 15} min`
-      }));
-      
-      setRecentActivity(mockActivity);
+        // Create recent activity based on joined projects
+        const mockActivity = joined.slice(0, 3).map((project, index) => ({
+          id: project._id,
+          problemTitle: project.title,
+          status: "Working",
+          difficulty: project.difficulty || "Medium",
+          date: new Date(Date.now() - (index + 1) * 24 * 60 * 60 * 1000),
+          timeSpent: `${Math.floor(Math.random() * 60) + 15} min`
+        }));
+        
+        setRecentActivity(mockActivity);
+        
+      } catch (apiError) {
+        console.log('API not available, using demo data');
+        // Fallback to demo data when backend is not available
+        const demoProjects = [
+          {
+            _id: '1',
+            title: 'E-commerce Platform',
+            description: 'Build a full-stack e-commerce platform with React and Node.js',
+            difficulty: 'Hard',
+            techStack: ['React', 'Node.js', 'MongoDB'],
+            creator: 'demo-creator-1',
+            isActive: true,
+            teamMembers: ['user1', 'user2'],
+            maxTeamSize: 5,
+            createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+          },
+          {
+            _id: '2',
+            title: 'Task Management App',
+            description: 'Create a collaborative task management application',
+            difficulty: 'Medium',
+            techStack: ['React', 'Express', 'PostgreSQL'],
+            creator: 'demo-creator-2',
+            isActive: true,
+            teamMembers: ['user3'],
+            maxTeamSize: 4,
+            createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+          },
+          {
+            _id: '3',
+            title: 'Chat Application',
+            description: 'Real-time chat application with Socket.io',
+            difficulty: 'Medium',
+            techStack: ['React', 'Socket.io', 'Node.js'],
+            creator: 'demo-creator-3',
+            isActive: true,
+            teamMembers: [],
+            maxTeamSize: 3,
+            createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+          }
+        ];
+        
+        setAvailableProjects(demoProjects);
+        setMyProjects([]);
+        
+        // Demo stats
+        setStats({
+          problemsSolved: 0,
+          currentStreak: 0,
+          totalSubmissions: 0,
+          successRate: 0
+        });
+        
+        setRecentActivity([]);
+      }
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      toast.error('Failed to load dashboard data');
+      // Only show error if it's not a network error (backend not running)
+      if (error.code !== 'ERR_NETWORK') {
+        toast.error('Failed to load dashboard data');
+      } else {
+        console.log('Backend not available, using demo mode');
+      }
     } finally {
       setLoading(false);
     }

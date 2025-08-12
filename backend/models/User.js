@@ -19,9 +19,16 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
+    required: function() {
+      return !this.githubId; // Password not required for GitHub OAuth users
+    },
     minlength: 6,
     select: false
+  },
+  githubId: {
+    type: String,
+    unique: true,
+    sparse: true // Allows null values while maintaining uniqueness
   },
   fullName: {
     type: String,
@@ -39,11 +46,11 @@ const userSchema = new mongoose.Schema({
   githubProfile: {
     type: String,
     required: function() {
-      return this.role === 'user';
+      return this.role === 'user' && !this.githubId; // Only required for non-OAuth users
     },
     validate: {
       validator: function(v) {
-        if (this.role !== 'user') return true;
+        if (this.role !== 'user' || this.githubId) return true;
         return /^https:\/\/github\.com\/[a-zA-Z0-9_-]+\/?$/.test(v);
       },
       message: 'Please provide a valid GitHub profile URL (https://github.com/username)'

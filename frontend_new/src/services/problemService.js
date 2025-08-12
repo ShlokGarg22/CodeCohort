@@ -41,8 +41,16 @@ export const problemService = {
       return response.data;
     } catch (error) {
       console.error('Get problems error:', error);
+      if (error.code === 'ERR_NETWORK') {
+        throw new Error('Unable to connect to server. Please check if the backend is running.');
+      }
       throw new Error(error.response?.data?.message || 'Failed to fetch problems');
     }
+  },
+
+  // Alias for getAllProblems
+  async getAllProblems(params = {}) {
+    return this.getProblems(params);
   },
 
   async getProblemById(id) {

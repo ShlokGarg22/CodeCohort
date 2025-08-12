@@ -1,6 +1,9 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require("mongoose");
 const cors = require('cors');
+const session = require('express-session');
+const passport = require('./config/passport');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const authRouter = require('./routes/auth');
@@ -8,7 +11,6 @@ const problemRouter = require('./routes/problems');
 const taskRouter = require('./routes/tasks');
 const teamRouter = require('./routes/teams');
 const uploadRouter = require('./routes/upload');
-require('dotenv').config();
 
 const app = express();
 const server = createServer(app);
@@ -80,6 +82,21 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Session middleware for OAuth
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// Passport middleware
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Routes
 app.use("/api/v1/auth", authRouter);

@@ -132,6 +132,12 @@ const SignUp = () => {
     }
   };
 
+  const handleGitHubSignup = () => {
+    // Redirect to GitHub OAuth
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+    window.location.href = `${backendUrl}/api/v1/auth/github`;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-lg">
@@ -310,6 +316,28 @@ const SignUp = () => {
               {loading ? 'Creating Account...' : 'Create Account'}
             </Button>
           </form>
+
+          <div className="mt-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-500">Or continue with</span>
+              </div>
+            </div>
+            
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full mt-4"
+              onClick={handleGitHubSignup}
+              disabled={loading}
+            >
+              <Github className="mr-2 h-4 w-4" />
+              Sign up with GitHub
+            </Button>
+          </div>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">

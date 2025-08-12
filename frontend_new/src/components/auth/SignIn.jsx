@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Github } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -63,6 +63,12 @@ const SignIn = () => {
         type: 'error'
       });
     }
+  };
+
+  const handleGitHubLogin = () => {
+    // Redirect to GitHub OAuth
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+    window.location.href = `${backendUrl}/api/v1/auth/github`;
   };
 
   return (
@@ -151,6 +157,28 @@ const SignIn = () => {
               {loading ? 'Signing In...' : 'Sign In'}
             </Button>
           </form>
+
+          <div className="mt-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-500">Or continue with</span>
+              </div>
+            </div>
+            
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full mt-4"
+              onClick={handleGitHubLogin}
+              disabled={loading}
+            >
+              <Github className="mr-2 h-4 w-4" />
+              Sign in with GitHub
+            </Button>
+          </div>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">

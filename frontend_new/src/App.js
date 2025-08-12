@@ -6,6 +6,7 @@ import TerminalSection from "./components/TerminalSection";
 import ActiveProblems from "./components/ActiveProblems";
 import SignIn from "./components/auth/SignIn";
 import SignUp from "./components/auth/SignUp";
+import GitHubCallback from "./components/auth/GitHubCallback";
 import Dashboard from "./components/Dashboard";
 import CreateProblem from "./components/CreateProblem";
 import ProjectBoard from "./components/ProjectBoard";
@@ -61,6 +62,10 @@ function App() {
                     <SignUp />
                   </AuthRedirect>
                 } 
+              />
+              <Route 
+                path="/auth/callback" 
+                element={<GitHubCallback />} 
               />
               <Route 
                 path="/dashboard" 
