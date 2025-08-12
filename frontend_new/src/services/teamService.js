@@ -22,7 +22,7 @@ api.interceptors.request.use((config) => {
 export const teamService = {
   async requestToJoinTeam(projectId, message = '') {
     try {
-      const response = await api.post(`/projects/${projectId}/join`, { message });
+      const response = await api.post(`/teams/projects/${projectId}/join`, { message });
       return response.data;
     } catch (error) {
       console.error('Request to join team error:', error);
@@ -32,7 +32,7 @@ export const teamService = {
 
   async getPendingRequests() {
     try {
-      const response = await api.get('/requests/my');
+      const response = await api.get('/teams/requests/my');
       return response.data;
     } catch (error) {
       console.error('Get pending requests error:', error);
@@ -42,7 +42,7 @@ export const teamService = {
 
   async getJoinRequests() {
     try {
-      const response = await api.get('/requests/creator');
+      const response = await api.get('/teams/requests/creator');
       return response.data;
     } catch (error) {
       console.error('Get join requests error:', error);
@@ -53,7 +53,7 @@ export const teamService = {
   async respondToJoinRequest(requestId, action) {
     try {
       console.log('TeamService: Responding to request:', { requestId, action });
-      const response = await api.put(`/requests/${requestId}/respond`, { action });
+      const response = await api.put(`/teams/requests/${requestId}/respond`, { action });
       console.log('TeamService: Response received:', response.data);
       return response.data;
     } catch (error) {
@@ -69,7 +69,7 @@ export const teamService = {
 
   async getMyRequests() {
     try {
-      const response = await api.get('/requests/my');
+      const response = await api.get('/teams/requests/my');
       return response.data;
     } catch (error) {
       console.error('Get my requests error:', error);
@@ -89,7 +89,7 @@ export const teamService = {
 
   async leaveTeam(projectId) {
     try {
-      const response = await api.delete(`/projects/${projectId}/leave`);
+      const response = await api.delete(`/teams/projects/${projectId}/leave`);
       return response.data;
     } catch (error) {
       console.error('Leave team error:', error);

@@ -7,6 +7,7 @@ import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { problemService } from '../services/problemService';
 import { teamService } from '../services/teamService';
+import GitHubRepositoryInput from './VersionHistory/GitHubRepositoryInput';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Plus, 
@@ -21,7 +22,11 @@ import {
   UserX,
   ExternalLink,
   Calendar,
-  User
+  User,
+  GitBranch,
+  Github,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -33,6 +38,9 @@ const CreatorDashboard = () => {
   const [joinRequests, setJoinRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [requestsLoading, setRequestsLoading] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedProjectRepo, setSelectedProjectRepo] = useState(null);
+  const [repoLoading, setRepoLoading] = useState(false);
 
   const isApproved = user?.creatorStatus === 'approved';
   const isPending = user?.creatorStatus === 'pending';
@@ -114,6 +122,86 @@ const CreatorDashboard = () => {
 
   const handleGoToProject = (projectId) => {
     navigate(`/project/${projectId}`);
+  };
+
+  const handleViewVersionHistory = (projectId) => {
+    navigate(`/project/${projectId}/version-history`);
+  };
+
+  const fetchProjectRepository = async (projectId) => {
+    try {
+      setRepoLoading(true);
+      const response = await problemService.getGitHubRepository(projectId);
+      setSelectedProjectRepo(response.data);
+    } catch (error) {
+      console.error('Error fetching project repository:', error);
+      // Set empty repository data if none exists
+      setSelectedProjectRepo({
+        url: '',
+        owner: '',
+        name: '',
+        fullName: '',
+        isLocked: false,
+        lockedAt: null
+      });
+    } finally {
+      setRepoLoading(false);
+    }
+  };
+
+  const handleProjectSelection = (projectId) => {
+    setSelectedProject(projectId);
+    if (projectId) {
+      fetchProjectRepository(projectId);
+    } else {
+      setSelectedProjectRepo(null);
+    }
+  };
+
+  const handleRepositoryChange = (repoUrl, repoData, isLocked) => {
+    console.log('Repository updated:', { repoUrl, repoData, isLocked });
+    // Update local state
+    setSelectedProjectRepo(prev => ({
+      ...prev,
+      url: repoUrl,
+      isLocked,
+      lockedAt: isLocked ? new Date().toISOString() : null
+    }));
+    toast.success(`Repository ${isLocked ? 'locked' : 'updated'} successfully!`);
+  };
+
+  const handleLockRepository = async () => {
+    if (!selectedProject) return;
+    
+    try {
+      await problemService.lockGitHubRepository(selectedProject);
+      setSelectedProjectRepo(prev => ({
+        ...prev,
+        isLocked: true,
+        lockedAt: new Date().toISOString()
+      }));
+      toast.success('Repository locked successfully! Team members can now access it.');
+    } catch (error) {
+      console.error('Error locking repository:', error);
+      toast.error(error.message || 'Failed to lock repository');
+    }
+  };
+
+  const handleUnlockRepository = async () => {
+    if (!selectedProject) return;
+    
+    try {
+      await problemService.unlockGitHubRepository(selectedProject);
+      setSelectedProjectRepo(prev => ({
+        ...prev,
+        isLocked: false,
+        lockedAt: null
+      }));
+      toast.success('Repository unlocked successfully!');
+    } catch (error) {
+      console.error('Error unlocking repository:', error);
+      toast.error(error.message || 'Failed to unlock repository');
+    }
   };
 
   if (isPending) {
@@ -246,11 +334,117 @@ const CreatorDashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold">{joinRequests.length}</div>
             <p className="text-xs text-muted-foreground">Join requests</p>
+        </CardContent>
+      </Card>
+
+      {/* GitHub Repository Management */}
+      {problems.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Github className="h-5 w-5" />
+              GitHub Repository Management
+            </CardTitle>
+            <CardDescription>
+              Link your projects to GitHub repositories for version history tracking
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Project selector */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Select Project to Manage
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {problems.map((problem) => (
+                    <Button
+                      key={problem._id}
+                      variant={selectedProject === problem._id ? 'default' : 'outline'}
+                      className="p-3 h-auto text-left justify-start"
+                      onClick={() => handleProjectSelection(problem._id)}
+                    >
+                      <div>
+                        <div className="font-medium">{problem.title}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {problem.isActive ? 'Active' : 'Draft'}
+                        </div>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* GitHub Repository Input for selected project */}
+              {selectedProject && (
+                <div className="space-y-4">
+                  <GitHubRepositoryInput
+                    projectId={selectedProject}
+                    initialRepoUrl={selectedProjectRepo?.url || ""}
+                    isLocked={selectedProjectRepo?.isLocked || false}
+                    canEdit={true}
+                    onRepositoryChange={handleRepositoryChange}
+                  />
+                  
+                  {/* Lock/Unlock Repository Section */}
+                  {selectedProjectRepo && selectedProjectRepo.url && (
+                    <div className="p-4 border rounded-lg bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {selectedProjectRepo.isLocked ? (
+                            <>
+                              <Lock className="h-4 w-4 text-green-600" />
+                              <span className="text-sm font-medium text-green-600">Repository Locked</span>
+                            </>
+                          ) : (
+                            <>
+                              <Unlock className="h-4 w-4 text-gray-600" />
+                              <span className="text-sm font-medium text-gray-600">Repository Unlocked</span>
+                            </>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={selectedProjectRepo.isLocked ? "outline" : "default"}
+                          onClick={selectedProjectRepo.isLocked ? handleUnlockRepository : handleLockRepository}
+                          className={selectedProjectRepo.isLocked ? 
+                            "text-red-600 border-red-600 hover:bg-red-50" : 
+                            "bg-green-600 hover:bg-green-700"
+                          }
+                        >
+                          {selectedProjectRepo.isLocked ? (
+                            <>
+                              <Unlock className="h-4 w-4 mr-1" />
+                              Unlock Repository
+                            </>
+                          ) : (
+                            <>
+                              <Lock className="h-4 w-4 mr-1" />
+                              Lock Repository
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        {selectedProjectRepo.isLocked ? 
+                          'Team members can access this repository through the navbar. Unlock to restrict access.' :
+                          'Lock this repository to allow approved team members to access it through the navbar.'
+                        }
+                      </p>
+                      {selectedProjectRepo.isLocked && selectedProjectRepo.lockedAt && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          Locked on {new Date(selectedProjectRepo.lockedAt).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Join Requests */}
+      )}
+    </div>      {/* Join Requests */}
       {displayJoinRequests.length > 0 && (
         <Card>
           <CardHeader>
@@ -375,6 +569,15 @@ const CreatorDashboard = () => {
                   <div className="flex gap-2">
                     <Button
                       size="sm"
+                      variant="outline"
+                      onClick={() => handleViewVersionHistory(problem._id)}
+                      className="flex items-center gap-1"
+                    >
+                      <GitBranch className="h-4 w-4" />
+                      History
+                    </Button>
+                    <Button
+                      size="sm"
                       onClick={() => handleGoToProject(problem._id)}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
@@ -392,6 +595,59 @@ const CreatorDashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* GitHub Repository Management */}
+      {problems.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Github className="h-5 w-5" />
+              GitHub Repository Management
+            </CardTitle>
+            <CardDescription>
+              Link your projects to GitHub repositories for version history tracking
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Project selector */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Select Project to Manage
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {problems.map((problem) => (
+                    <Button
+                      key={problem._id}
+                      variant={selectedProject === problem._id ? 'default' : 'outline'}
+                      className="p-3 h-auto text-left justify-start"
+                      onClick={() => handleProjectSelection(problem._id)}
+                    >
+                      <div>
+                        <div className="font-medium">{problem.title}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {problem.isActive ? 'Active' : 'Draft'}
+                        </div>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* GitHub Repository Input for selected project */}
+              {selectedProject && (
+                <GitHubRepositoryInput
+                  projectId={selectedProject}
+                  initialRepoUrl={selectedProjectRepo?.url || ""}
+                  isLocked={selectedProjectRepo?.isLocked || false}
+                  canEdit={true}
+                  onRepositoryChange={handleRepositoryChange}
+                />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

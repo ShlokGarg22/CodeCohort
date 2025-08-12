@@ -7,6 +7,8 @@ import ActiveProblems from "./components/ActiveProblems";
 import SignIn from "./components/auth/SignIn";
 import SignUp from "./components/auth/SignUp";
 import GitHubCallback from "./components/auth/GitHubCallback";
+import VersionHistory from "./components/VersionHistory";
+import DemoVersionHistory from "./components/DemoVersionHistory";
 import Dashboard from "./components/Dashboard";
 import CreateProblem from "./components/CreateProblem";
 import ProjectBoard from "./components/ProjectBoard";
@@ -98,6 +100,18 @@ function App() {
                     <ProjectBoard />
                   </ProtectedRoute>
                 } 
+              />
+              <Route 
+                path="/project/:projectId/version-history" 
+                element={
+                  <ProtectedRoute>
+                    <VersionHistory />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/demo/version-history" 
+                element={<DemoVersionHistory />} 
               />
               {/* Catch all route - redirect to home */}
               <Route path="*" element={<Navigate to="/" replace />} />

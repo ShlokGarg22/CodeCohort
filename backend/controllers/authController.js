@@ -66,9 +66,9 @@ const signup = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message
+        errors: (error.errors || []).map(err => ({
+          field: err.path?.join('.') || 'unknown',
+          message: err.message || 'Validation failed'
         }))
       });
     }
@@ -128,9 +128,9 @@ const signin = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message
+        errors: (error.errors || []).map(err => ({
+          field: err.path?.join('.') || 'unknown',
+          message: err.message || 'Validation failed'
         }))
       });
     }

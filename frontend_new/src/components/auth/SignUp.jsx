@@ -81,17 +81,30 @@ const SignUp = () => {
       return;
     }
 
-    // Check GitHub profile for user role
-    if (formData.role === 'user') {
+    // Check GitHub profile for creator role
+    if (formData.role === 'creator') {
       if (!formData.githubProfile) {
         setAlert({
           show: true,
-          message: 'GitHub profile URL is required for user accounts',
+          message: 'GitHub profile URL is required for creator accounts',
           type: 'error'
         });
         return;
       }
 
+      const githubRegex = /^https:\/\/github\.com\/[a-zA-Z0-9_-]+\/?$/;
+      if (!githubRegex.test(formData.githubProfile)) {
+        setAlert({
+          show: true,
+          message: 'Please provide a valid GitHub profile URL (https://github.com/username)',
+          type: 'error'
+        });
+        return;
+      }
+    }
+
+    // Validate GitHub profile format if provided for users
+    if (formData.role === 'user' && formData.githubProfile) {
       const githubRegex = /^https:\/\/github\.com\/[a-zA-Z0-9_-]+\/?$/;
       if (!githubRegex.test(formData.githubProfile)) {
         setAlert({
@@ -238,27 +251,31 @@ const SignUp = () => {
               )}
             </div>
 
-            {formData.role === 'user' && (
-              <div className="space-y-2">
-                <Label htmlFor="githubProfile">GitHub Profile URL</Label>
-                <div className="relative">
-                  <Github className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="githubProfile"
-                    name="githubProfile"
-                    type="url"
-                    placeholder="https://github.com/yourusername"
-                    value={formData.githubProfile}
-                    onChange={handleChange}
-                    className="pl-10"
-                    required={formData.role === 'user'}
-                  />
-                </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  Your GitHub profile will be visible to other users and team members.
-                </p>
+            {/* GitHub Profile field for both users and creators */}
+            <div className="space-y-2">
+              <Label htmlFor="githubProfile">
+                GitHub Profile URL {formData.role === 'creator' && <span className="text-red-500">*</span>}
+              </Label>
+              <div className="relative">
+                <Github className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="githubProfile"
+                  name="githubProfile"
+                  type="url"
+                  placeholder="https://github.com/yourusername"
+                  value={formData.githubProfile}
+                  onChange={handleChange}
+                  className="pl-10"
+                  required={formData.role === 'creator'}
+                />
               </div>
-            )}
+              <p className="text-sm text-gray-500 mt-1">
+                {formData.role === 'creator' 
+                  ? 'Your GitHub profile will be used to validate your identity as a creator.'
+                  : 'Your GitHub profile will be visible to other users and team members (optional).'
+                }
+              </p>
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>

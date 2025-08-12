@@ -5,7 +5,7 @@ import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { User, LogOut, Plus, Users, ChevronDown, Bell, Settings, UserCircle } from 'lucide-react';
+import { User, LogOut, Plus, Users, ChevronDown, Bell, Settings, UserCircle, Github } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +22,7 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [userProjects, setUserProjects] = useState([]);
+  const [projectGitHubRepos, setProjectGitHubRepos] = useState({});
   const [showNotifications, setShowNotifications] = useState(false);
 
   // Check if user is on dashboard page
@@ -53,6 +54,31 @@ const Header = () => {
           );
           
           setUserProjects(joinedProjects);
+
+          // Fetch GitHub repository info for each project
+          const repoPromises = joinedProjects.map(async (project) => {
+            try {
+              const repoResponse = await problemService.getGitHubRepository(project._id);
+              return {
+                projectId: project._id,
+                repository: repoResponse.data
+              };
+            } catch (error) {
+              console.error(`Error fetching GitHub repo for project ${project._id}:`, error);
+              return {
+                projectId: project._id,
+                repository: null
+              };
+            }
+          });
+
+          const repoResults = await Promise.all(repoPromises);
+          const repoMap = {};
+          repoResults.forEach(result => {
+            repoMap[result.projectId] = result.repository;
+          });
+          setProjectGitHubRepos(repoMap);
+          
         } catch (error) {
           console.error('Error fetching user projects:', error);
         }
@@ -123,18 +149,38 @@ const Header = () => {
                       Your Projects
                     </div>
                     <DropdownMenuSeparator />
-                    {userProjects.map((project) => (
-                      <DropdownMenuItem 
-                        key={project._id}
-                        onClick={() => handleGoToProject(project._id)}
-                        className="flex flex-col items-start py-2"
-                      >
-                        <span className="font-medium">{project.title}</span>
-                        <span className="text-xs text-gray-500 truncate">
-                          {project.teamMembers?.length || 0} members • {project.difficulty || 'Medium'}
-                        </span>
-                      </DropdownMenuItem>
-                    ))}
+                    {userProjects.map((project) => {
+                      const gitHubRepo = projectGitHubRepos[project._id];
+                      const hasLockedRepo = gitHubRepo && gitHubRepo.isLocked && gitHubRepo.url;
+                      
+                      return (
+                        <div key={project._id}>
+                          <DropdownMenuItem 
+                            onClick={() => handleGoToProject(project._id)}
+                            className="flex flex-col items-start py-2"
+                          >
+                            <span className="font-medium">{project.title}</span>
+                            <span className="text-xs text-gray-500 truncate">
+                              {project.teamMembers?.length || 0} members • {project.difficulty || 'Medium'}
+                            </span>
+                          </DropdownMenuItem>
+                          
+                          {/* GitHub Repository Link */}
+                          {hasLockedRepo && (
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(gitHubRepo.url, '_blank');
+                              }}
+                              className="flex items-center gap-2 py-2 pl-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <Github className="h-3 w-3" />
+                              <span className="text-xs">View Repository</span>
+                            </DropdownMenuItem>
+                          )}
+                        </div>
+                      );
+                    })}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -151,6 +197,12 @@ const Header = () => {
               <Link to="/dashboard">
                 <Button variant="outline" size="sm">
                   Dashboard
+                </Button>
+              </Link>
+              
+              <Link to="/demo/version-history">
+                <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                  Demo
                 </Button>
               </Link>
 

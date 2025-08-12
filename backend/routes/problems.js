@@ -7,7 +7,11 @@ const {
   getProblemById,
   getMyProblems,
   updateProblem,
-  deleteProblem
+  deleteProblem,
+  updateGitHubRepository,
+  getGitHubRepository,
+  lockGitHubRepository,
+  unlockGitHubRepository
 } = require('../controllers/problemController');
 
 // Public routes
@@ -21,5 +25,11 @@ router.post('/', createProblem); // Create new problem (creators only)
 router.get('/my/problems', getMyProblems); // Get my problems (creators only)
 router.put('/:id', updateProblem); // Update problem (creator/admin only)
 router.delete('/:id', deleteProblem); // Delete problem (creator/admin only)
+
+// GitHub repository routes
+router.put('/:projectId/github-repository', updateGitHubRepository); // Update GitHub repository
+router.get('/:projectId/github-repository', getGitHubRepository); // Get GitHub repository
+router.put('/:projectId/github-repository/lock', lockGitHubRepository); // Lock GitHub repository
+router.put('/:projectId/github-repository/unlock', unlockGitHubRepository); // Unlock GitHub repository
 
 module.exports = router;

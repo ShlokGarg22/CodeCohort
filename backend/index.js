@@ -103,7 +103,7 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/problems", problemRouter);
 app.use("/api/v1/upload", uploadRouter);
 app.use("/api/v1", taskRouter);
-app.use("/api/v1", teamRouter);
+app.use("/api/v1/teams", teamRouter);
 
 // Health check route
 app.get('/api/v1/health', (req, res) => {

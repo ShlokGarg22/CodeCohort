@@ -40,13 +40,13 @@ const signupSchema = z.object({
     .default('user')
     .optional()
 }).refine((data) => {
-  // GitHub profile is required for users
-  if (data.role === 'user' && !data.githubProfile) {
+  // GitHub profile is required for creators
+  if (data.role === 'creator' && !data.githubProfile) {
     return false;
   }
   return true;
 }, {
-  message: "GitHub profile URL is required for user accounts",
+  message: "GitHub profile URL is required for creator accounts",
   path: ["githubProfile"]
 });
 

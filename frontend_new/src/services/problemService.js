@@ -91,5 +91,45 @@ export const problemService = {
       console.error('Delete problem error:', error);
       throw new Error(error.response?.data?.message || 'Failed to delete problem');
     }
+  },
+
+  async updateGitHubRepository(projectId, repositoryData) {
+    try {
+      const response = await api.put(`/problems/${projectId}/github-repository`, repositoryData);
+      return response.data;
+    } catch (error) {
+      console.error('Update GitHub repository error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to update GitHub repository');
+    }
+  },
+
+  async getGitHubRepository(projectId) {
+    try {
+      const response = await api.get(`/problems/${projectId}/github-repository`);
+      return response.data;
+    } catch (error) {
+      console.error('Get GitHub repository error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch GitHub repository');
+    }
+  },
+
+  async lockGitHubRepository(projectId) {
+    try {
+      const response = await api.put(`/problems/${projectId}/github-repository/lock`);
+      return response.data;
+    } catch (error) {
+      console.error('Lock GitHub repository error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to lock GitHub repository');
+    }
+  },
+
+  async unlockGitHubRepository(projectId) {
+    try {
+      const response = await api.put(`/problems/${projectId}/github-repository/unlock`);
+      return response.data;
+    } catch (error) {
+      console.error('Unlock GitHub repository error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to unlock GitHub repository');
+    }
   }
 };

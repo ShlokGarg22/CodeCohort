@@ -13,7 +13,8 @@ import {
   Users,
   Calendar,
   User,
-  ExternalLink
+  ExternalLink,
+  GitBranch
 } from 'lucide-react';
 import { problemService } from '../services/problemService';
 import { teamService } from '../services/teamService';
@@ -232,6 +233,10 @@ const UserDashboard = () => {
     navigate(`/project/${projectId}`);
   };
 
+  const handleViewVersionHistory = (projectId) => {
+    navigate(`/project/${projectId}/version-history`);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -354,14 +359,25 @@ const UserDashboard = () => {
                         Created by {project.creator?.fullName}
                       </p>
                     </div>
-                    <Button 
-                      size="sm" 
-                      onClick={() => handleGoToProject(project._id)}
-                      className="flex items-center gap-1"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      Open
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewVersionHistory(project._id)}
+                        className="flex items-center gap-1"
+                      >
+                        <GitBranch className="h-3 w-3" />
+                        History
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleGoToProject(project._id)}
+                        className="flex items-center gap-1"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Open
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

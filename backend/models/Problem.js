@@ -108,6 +108,32 @@ const problemSchema = new mongoose.Schema({
   currentTeamSize: {
     type: Number,
     default: 0
+  },
+  githubRepository: {
+    url: {
+      type: String,
+      default: ''
+    },
+    owner: {
+      type: String,
+      default: ''
+    },
+    name: {
+      type: String,
+      default: ''
+    },
+    fullName: {
+      type: String,
+      default: ''
+    },
+    isLocked: {
+      type: Boolean,
+      default: false
+    },
+    lockedAt: {
+      type: Date,
+      default: null
+    }
   }
 }, {
   timestamps: true

@@ -82,9 +82,9 @@ const createProblem = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message
+        errors: (error.errors || []).map(err => ({
+          field: err.path?.join('.') || 'unknown',
+          message: err.message || 'Validation failed'
         }))
       });
     }
@@ -280,9 +280,9 @@ const updateProblem = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message
+        errors: (error.errors || []).map(err => ({
+          field: err.path?.join('.') || 'unknown',
+          message: err.message || 'Validation failed'
         }))
       });
     }
@@ -334,11 +334,205 @@ const deleteProblem = async (req, res) => {
   }
 };
 
+// Update GitHub repository for a problem
+const updateGitHubRepository = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { url, owner, name, fullName, isLocked } = req.body;
+
+    const problem = await Problem.findById(projectId);
+    if (!problem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Project not found'
+      });
+    }
+
+    // Check if user is the creator
+    if (problem.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only project creators can update GitHub repository'
+      });
+    }
+
+    // Update GitHub repository information
+    problem.githubRepository = {
+      url: url || '',
+      owner: owner || '',
+      name: name || '',
+      fullName: fullName || '',
+      isLocked: Boolean(isLocked),
+      lockedAt: isLocked ? new Date() : null
+    };
+
+    await problem.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'GitHub repository updated successfully',
+      data: problem.githubRepository
+    });
+
+  } catch (error) {
+    console.error('Update GitHub repository error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Get GitHub repository for a problem
+const getGitHubRepository = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const problem = await Problem.findById(projectId);
+    if (!problem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Project not found'
+      });
+    }
+
+    // Check if user has access (creator, team member, or admin)
+    const isCreator = problem.createdBy.toString() === req.user._id.toString();
+    const isTeamMember = problem.teamMembers.some(
+      member => member.user.toString() === req.user._id.toString()
+    );
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isCreator && !isTeamMember && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: problem.githubRepository
+    });
+
+  } catch (error) {
+    console.error('Get GitHub repository error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Lock GitHub repository for a problem
+const lockGitHubRepository = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const problem = await Problem.findById(projectId);
+    if (!problem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Project not found'
+      });
+    }
+
+    // Check if user is the creator
+    const isCreator = problem.createdBy.toString() === req.user._id.toString();
+    if (!isCreator) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the project creator can lock the repository'
+      });
+    }
+
+    // Check if repository exists
+    if (!problem.githubRepository || !problem.githubRepository.url) {
+      return res.status(400).json({
+        success: false,
+        message: 'No GitHub repository is linked to this project'
+      });
+    }
+
+    // Lock the repository
+    problem.githubRepository.isLocked = true;
+    problem.githubRepository.lockedAt = new Date();
+    await problem.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'GitHub repository locked successfully',
+      data: problem.githubRepository
+    });
+
+  } catch (error) {
+    console.error('Lock GitHub repository error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Unlock GitHub repository for a problem
+const unlockGitHubRepository = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const problem = await Problem.findById(projectId);
+    if (!problem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Project not found'
+      });
+    }
+
+    // Check if user is the creator
+    const isCreator = problem.createdBy.toString() === req.user._id.toString();
+    if (!isCreator) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the project creator can unlock the repository'
+      });
+    }
+
+    // Check if repository exists
+    if (!problem.githubRepository || !problem.githubRepository.url) {
+      return res.status(400).json({
+        success: false,
+        message: 'No GitHub repository is linked to this project'
+      });
+    }
+
+    // Unlock the repository
+    problem.githubRepository.isLocked = false;
+    problem.githubRepository.lockedAt = null;
+    await problem.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'GitHub repository unlocked successfully',
+      data: problem.githubRepository
+    });
+
+  } catch (error) {
+    console.error('Unlock GitHub repository error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 module.exports = {
   createProblem,
   getProblems,
   getProblemById,
   getMyProblems,
   updateProblem,
-  deleteProblem
+  deleteProblem,
+  updateGitHubRepository,
+  getGitHubRepository,
+  lockGitHubRepository,
+  unlockGitHubRepository
 };
