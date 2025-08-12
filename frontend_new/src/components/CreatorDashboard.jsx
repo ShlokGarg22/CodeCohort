@@ -84,33 +84,32 @@ const CreatorDashboard = () => {
 
   const handleJoinRequestAction = async (request, action) => {
     try {
-      // Use Socket.io if it's a socket request, otherwise use API
-      if (request.requestId) {
-        // Socket.io request
-        await teamService.respondToJoinRequest(request.requestId, action);
-        
-        // Send real-time response via Socket.io
+      // Determine the correct request ID to use
+      const requestId = request.requestId || request._id;
+      
+      if (!requestId) {
+        throw new Error('Invalid request ID');
+      }
+
+      // Use the teamService to respond to the request
+      await teamService.respondToJoinRequest(requestId, action);
+      
+      // If it's a socket request, send real-time response
+      if (request.requestId && request.requester?.id && request.projectId) {
         respondToJoinRequest(
           request.requester.id,
           request.projectId,
           action === 'approve',
           { title: request.projectTitle }
         );
-        
-        toast.success(`Join request ${action}d successfully!`);
-      } else {
-        // API request
-        if (action === 'approve') {
-          await teamService.approveJoinRequest(request._id);
-          toast.success('Join request approved successfully!');
-        } else {
-          await teamService.rejectJoinRequest(request._id);
-          toast.success('Join request rejected');
-        }
-        
-        // Remove the request from the list
+      }
+      
+      // Remove the request from the list if it's an API request
+      if (request._id && !request.requestId) {
         setJoinRequests(prev => prev.filter(req => req._id !== request._id));
       }
+      
+      toast.success(`Join request ${action}d successfully!`);
       
       // Refresh problems to update team member count
       fetchMyProblems();
@@ -334,8 +333,9 @@ const CreatorDashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold">{joinRequests.length}</div>
             <p className="text-xs text-muted-foreground">Join requests</p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* GitHub Repository Management */}
       {problems.length > 0 && (
@@ -444,7 +444,8 @@ const CreatorDashboard = () => {
           </CardContent>
         </Card>
       )}
-    </div>      {/* Join Requests */}
+
+      {/* Join Requests */}
       {displayJoinRequests.length > 0 && (
         <Card>
           <CardHeader>
@@ -595,59 +596,6 @@ const CreatorDashboard = () => {
           )}
         </CardContent>
       </Card>
-
-      {/* GitHub Repository Management */}
-      {problems.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Github className="h-5 w-5" />
-              GitHub Repository Management
-            </CardTitle>
-            <CardDescription>
-              Link your projects to GitHub repositories for version history tracking
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Project selector */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Select Project to Manage
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {problems.map((problem) => (
-                    <Button
-                      key={problem._id}
-                      variant={selectedProject === problem._id ? 'default' : 'outline'}
-                      className="p-3 h-auto text-left justify-start"
-                      onClick={() => handleProjectSelection(problem._id)}
-                    >
-                      <div>
-                        <div className="font-medium">{problem.title}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {problem.isActive ? 'Active' : 'Draft'}
-                        </div>
-                      </div>
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {/* GitHub Repository Input for selected project */}
-              {selectedProject && (
-                <GitHubRepositoryInput
-                  projectId={selectedProject}
-                  initialRepoUrl={selectedProjectRepo?.url || ""}
-                  isLocked={selectedProjectRepo?.isLocked || false}
-                  canEdit={true}
-                  onRepositoryChange={handleRepositoryChange}
-                />
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };

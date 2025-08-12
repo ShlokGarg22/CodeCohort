@@ -45,25 +45,36 @@ const requestToJoinTeam = async (req, res) => {
 
     // Check if user has reached max projects limit
     const userWithProjects = await User.findById(req.user._id);
-    if (userWithProjects.joinedProjects && userWithProjects.joinedProjects.length >= 5) {
+    if (userWithProjects.joinedProjects && userWithProjects.joinedProjects.length >= userWithProjects.maxProjects) {
       return res.status(400).json({
         success: false,
-        message: 'You can only join up to 5 projects'
+        message: `You can only join up to ${userWithProjects.maxProjects} projects`
       });
     }
 
-    // Check if there's already a pending request
+    // Check if there's already a request (any status)
     const existingRequest = await TeamRequest.findOne({
       project: projectId,
-      requester: req.user._id,
-      status: 'pending'
+      requester: req.user._id
     });
 
     if (existingRequest) {
-      return res.status(400).json({
-        success: false,
-        message: 'You already have a pending request for this project'
-      });
+      if (existingRequest.status === 'pending') {
+        return res.status(400).json({
+          success: false,
+          message: 'You already have a pending request for this project'
+        });
+      } else if (existingRequest.status === 'approved') {
+        return res.status(400).json({
+          success: false,
+          message: 'You are already a member of this project'
+        });
+      } else if (existingRequest.status === 'rejected') {
+        return res.status(400).json({
+          success: false,
+          message: 'Your previous request to join this project was rejected'
+        });
+      }
     }
 
     // Create the join request
@@ -193,11 +204,11 @@ const respondToJoinRequest = async (req, res) => {
       const project = await Problem.findById(teamRequest.project._id);
       
       // Check if team is full
-      if (project.teamMembers.length >= 10) { // Max team size
+      if (project.teamMembers.length >= project.maxTeamSize) {
         console.log('Team is full');
         return res.status(400).json({
           success: false,
-          message: 'Team is already full'
+          message: `Team is already full (max ${project.maxTeamSize} members)`
         });
       }
 
@@ -213,7 +224,13 @@ const respondToJoinRequest = async (req, res) => {
 
       // Add project to user's joined projects
       await User.findByIdAndUpdate(teamRequest.requester._id, {
-        $addToSet: { joinedProjects: project._id }
+        $addToSet: { 
+          joinedProjects: {
+            project: project._id,
+            joinedAt: new Date(),
+            role: 'developer'
+          }
+        }
       });
       console.log('Project added to user joined projects');
     }
@@ -375,7 +392,7 @@ const leaveTeam = async (req, res) => {
 
     // Remove project from user's joined projects
     await User.findByIdAndUpdate(req.user._id, {
-      $pull: { joinedProjects: projectId }
+      $pull: { joinedProjects: { project: projectId } }
     });
 
     res.status(200).json({
