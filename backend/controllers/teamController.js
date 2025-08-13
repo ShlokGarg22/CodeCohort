@@ -14,9 +14,16 @@ const requestToJoinTeam = async (req, res) => {
     const { projectId } = req.params;
     const validatedData = joinRequestSchema.parse(req.body);
 
+    console.log('📨 Processing join request:', {
+      projectId,
+      requesterId: req.user._id,
+      message: validatedData.message
+    });
+
     // Check if project exists
     const project = await Problem.findById(projectId).populate('createdBy');
     if (!project) {
+      console.log('❌ Project not found:', projectId);
       return res.status(404).json({
         success: false,
         message: 'Project not found'
@@ -25,6 +32,7 @@ const requestToJoinTeam = async (req, res) => {
 
     // Check if project is active
     if (!project.isActive) {
+      console.log('❌ Project is not active:', projectId);
       return res.status(400).json({
         success: false,
         message: 'This project is no longer accepting new members'
@@ -37,6 +45,7 @@ const requestToJoinTeam = async (req, res) => {
     );
 
     if (isAlreadyMember) {
+      console.log('❌ User already a member:', req.user._id);
       return res.status(400).json({
         success: false,
         message: 'You are already a member of this team'
@@ -46,6 +55,7 @@ const requestToJoinTeam = async (req, res) => {
     // Check if user has reached max projects limit
     const userWithProjects = await User.findById(req.user._id);
     if (userWithProjects.joinedProjects && userWithProjects.joinedProjects.length >= userWithProjects.maxProjects) {
+      console.log('❌ User reached max projects limit:', req.user._id);
       return res.status(400).json({
         success: false,
         message: `You can only join up to ${userWithProjects.maxProjects} projects`
@@ -60,16 +70,19 @@ const requestToJoinTeam = async (req, res) => {
 
     if (existingRequest) {
       if (existingRequest.status === 'pending') {
+        console.log('❌ User already has pending request:', req.user._id);
         return res.status(400).json({
           success: false,
           message: 'You already have a pending request for this project'
         });
       } else if (existingRequest.status === 'approved') {
+        console.log('❌ User already approved member:', req.user._id);
         return res.status(400).json({
           success: false,
           message: 'You are already a member of this project'
         });
       } else if (existingRequest.status === 'rejected') {
+        console.log('❌ User previous request rejected:', req.user._id);
         return res.status(400).json({
           success: false,
           message: 'Your previous request to join this project was rejected'
@@ -86,6 +99,7 @@ const requestToJoinTeam = async (req, res) => {
     });
 
     await teamRequest.save();
+    console.log('✅ Join request created:', teamRequest._id);
 
     // Get populated request data for socket emission
     const populatedRequest = await TeamRequest.findById(teamRequest._id)
@@ -95,7 +109,7 @@ const requestToJoinTeam = async (req, res) => {
     // Emit real-time notification to creator via Socket.io
     const io = req.app.get('io');
     if (io) {
-      io.to(`user-${project.createdBy._id}`).emit('new-join-request', {
+      const notificationData = {
         requestId: populatedRequest._id,
         projectId: project._id,
         projectTitle: project.title,
@@ -106,10 +120,17 @@ const requestToJoinTeam = async (req, res) => {
           profileImage: populatedRequest.requester.profileImage
         },
         message: populatedRequest.message,
-        timestamp: populatedRequest.createdAt
-      });
+        timestamp: populatedRequest.createdAt,
+        isApiRequest: true // Distinguish from socket requests
+      };
+
+      console.log('📡 Emitting join request notification to creator:', project.createdBy._id);
+      io.to(`user-${project.createdBy._id}`).emit('new-join-request', notificationData);
+    } else {
+      console.log('⚠️ Socket.IO not available for real-time notification');
     }
 
+    console.log('✅ Join request processed successfully');
     res.status(201).json({
       success: true,
       message: 'Join request sent successfully',
@@ -118,6 +139,7 @@ const requestToJoinTeam = async (req, res) => {
 
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.log('❌ Validation error:', error.errors);
       return res.status(400).json({
         success: false,
         message: 'Validation error',
@@ -125,7 +147,7 @@ const requestToJoinTeam = async (req, res) => {
       });
     }
 
-    console.error('Request to join team error:', error);
+    console.error('❌ Request to join team error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -136,7 +158,7 @@ const requestToJoinTeam = async (req, res) => {
 // Respond to a team join request (approve/reject)
 const respondToJoinRequest = async (req, res) => {
   try {
-    console.log('Responding to join request:', {
+    console.log('📨 Processing join request response:', {
       requestId: req.params.requestId,
       action: req.body.action,
       userId: req.user._id
@@ -146,7 +168,7 @@ const respondToJoinRequest = async (req, res) => {
     const { action } = req.body; // 'approve' or 'reject'
 
     if (!['approve', 'reject'].includes(action)) {
-      console.log('Invalid action provided:', action);
+      console.log('❌ Invalid action provided:', action);
       return res.status(400).json({
         success: false,
         message: 'Action must be either "approve" or "reject"'
@@ -158,10 +180,10 @@ const respondToJoinRequest = async (req, res) => {
       .populate('project')
       .populate('requester', 'username fullName profileImage');
 
-    console.log('Found team request:', teamRequest);
+    console.log('📋 Found team request:', teamRequest?._id);
 
     if (!teamRequest) {
-      console.log('Team request not found');
+      console.log('❌ Team request not found:', requestId);
       return res.status(404).json({
         success: false,
         message: 'Join request not found'
@@ -169,14 +191,15 @@ const respondToJoinRequest = async (req, res) => {
     }
 
     // Check if user is the project creator
-    console.log('Permission check:', {
+    const isCreator = teamRequest.project.createdBy.toString() === req.user._id.toString();
+    console.log('🔐 Permission check:', {
       projectCreator: teamRequest.project.createdBy.toString(),
       currentUser: req.user._id.toString(),
-      isCreator: teamRequest.project.createdBy.toString() === req.user._id.toString()
+      isCreator
     });
 
-    if (teamRequest.project.createdBy.toString() !== req.user._id.toString()) {
-      console.log('User is not the project creator');
+    if (!isCreator) {
+      console.log('❌ User is not the project creator');
       return res.status(403).json({
         success: false,
         message: 'Only the project creator can respond to join requests'
@@ -185,7 +208,7 @@ const respondToJoinRequest = async (req, res) => {
 
     // Check if request is still pending
     if (teamRequest.status !== 'pending') {
-      console.log('Request already processed:', teamRequest.status);
+      console.log('❌ Request already processed:', teamRequest.status);
       return res.status(400).json({
         success: false,
         message: 'This request has already been processed'
@@ -196,16 +219,16 @@ const respondToJoinRequest = async (req, res) => {
     teamRequest.status = action === 'approve' ? 'approved' : 'rejected';
     teamRequest.respondedAt = new Date();
     await teamRequest.save();
-    console.log('Request status updated:', teamRequest.status);
+    console.log('✅ Request status updated:', teamRequest.status);
 
     // If approved, add user to team
     if (action === 'approve') {
-      console.log('Adding user to team...');
+      console.log('➕ Adding user to team...');
       const project = await Problem.findById(teamRequest.project._id);
       
       // Check if team is full
       if (project.teamMembers.length >= project.maxTeamSize) {
-        console.log('Team is full');
+        console.log('❌ Team is full:', project.teamMembers.length, '/', project.maxTeamSize);
         return res.status(400).json({
           success: false,
           message: `Team is already full (max ${project.maxTeamSize} members)`
@@ -220,7 +243,7 @@ const respondToJoinRequest = async (req, res) => {
       });
       
       await project.save();
-      console.log('User added to team successfully');
+      console.log('✅ User added to team successfully');
 
       // Add project to user's joined projects
       await User.findByIdAndUpdate(teamRequest.requester._id, {
@@ -232,23 +255,28 @@ const respondToJoinRequest = async (req, res) => {
           }
         }
       });
-      console.log('Project added to user joined projects');
+      console.log('✅ Project added to user joined projects');
     }
 
     // Emit real-time notification to requester via Socket.io
     const io = req.app.get('io');
     if (io) {
-      console.log('Sending socket notification to user:', teamRequest.requester._id);
-      io.to(`user-${teamRequest.requester._id}`).emit('join-request-response', {
+      const notificationData = {
         requestId: teamRequest._id,
         projectId: teamRequest.project._id,
         projectTitle: teamRequest.project.title,
         approved: action === 'approve',
-        timestamp: new Date()
-      });
+        timestamp: new Date(),
+        isApiRequest: true // Distinguish from socket requests
+      };
+
+      console.log('📡 Emitting join request response to user:', teamRequest.requester._id);
+      io.to(`user-${teamRequest.requester._id}`).emit('join-request-response', notificationData);
+    } else {
+      console.log('⚠️ Socket.IO not available for real-time notification');
     }
 
-    console.log('Request processed successfully');
+    console.log('✅ Request processed successfully');
     res.status(200).json({
       success: true,
       message: `Request ${action}d successfully`,
@@ -256,7 +284,7 @@ const respondToJoinRequest = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Respond to join request error:', error);
+    console.error('❌ Respond to join request error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
