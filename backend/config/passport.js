@@ -16,14 +16,22 @@ async (accessToken, refreshToken, profile, done) => {
       return done(null, user);
     }
 
+    // Get email from profile
+    const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
+    
+    // If no email, return error
+    if (!email) {
+      return done(new Error('Your GitHub account does not have a public email. Please add a public email to your GitHub profile and try again.'));
+    }
+
     // Check if user exists with the same email
-    user = await User.findOne({ email: profile.emails[0].value });
+    user = await User.findOne({ email });
     
     if (user) {
       // Link GitHub account to existing user
       user.githubId = profile.id;
       user.githubProfile = profile.profileUrl;
-      user.profileImage = user.profileImage || profile.photos[0].value;
+      user.profileImage = user.profileImage || (profile.photos && profile.photos[0] ? profile.photos[0].value : null);
       await user.save();
       return done(null, user);
     }
@@ -31,11 +39,11 @@ async (accessToken, refreshToken, profile, done) => {
     // Create new user
     const newUser = new User({
       githubId: profile.id,
-      username: profile.username || profile.displayName.replace(/\s+/g, '').toLowerCase(),
-      email: profile.emails[0].value,
-      fullName: profile.displayName || profile.username,
+      username: profile.username || (profile.displayName ? profile.displayName.replace(/\s+/g, '').toLowerCase() : 'githubuser'),
+      email: email,
+      fullName: profile.displayName || profile.username || 'GitHub User',
       githubProfile: profile.profileUrl,
-      profileImage: profile.photos[0].value,
+      profileImage: profile.photos && profile.photos[0] ? profile.photos[0].value : null,
       password: 'github_oauth_' + Math.random().toString(36).substring(7), // Random password for OAuth users
       isVerified: true, // GitHub accounts are considered verified
       role: 'user'

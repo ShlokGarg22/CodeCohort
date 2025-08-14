@@ -146,7 +146,7 @@ const ProfilePictureSelector = ({ value, onChange, fullName, username }) => {
                     onClick={() => selectAnimatedAvatar(avatar)}
                   >
                     <div 
-                      className="w-full h-full"
+                      className="w-full h-full flex items-center justify-center"
                       dangerouslySetInnerHTML={{ __html: avatar.svg }}
                     />
                     {selectedAnimated === avatar.id && (
@@ -182,7 +182,7 @@ const ProfilePictureSelector = ({ value, onChange, fullName, username }) => {
                     onClick={() => selectAnimatedAvatar(avatar)}
                   >
                     <div 
-                      className="w-full h-full"
+                      className="w-full h-full flex items-center justify-center"
                       dangerouslySetInnerHTML={{ __html: avatar.svg }}
                     />
                     {selectedAnimated === avatar.id && (
