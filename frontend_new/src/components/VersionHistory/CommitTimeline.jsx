@@ -26,6 +26,7 @@ import {
   Minus
 } from 'lucide-react';
 import { githubService } from '../../services/githubService';
+import { getCommitAuthorDisplay, getCommitAuthorAvatar, getCommitAuthorInitials, getCommitDate } from '../../utils/commitUtils';
 import { format, formatDistanceToNow } from 'date-fns';
 
 /**
@@ -78,7 +79,7 @@ const CommitItem = ({
     };
   };
 
-  const timestamp = formatTimestamp(commit.author.date);
+  const timestamp = formatTimestamp(getCommitDate(commit));
   const changeTypeColor = githubService.getChangeTypeColor(commit.changeType);
 
   return (
@@ -158,17 +159,17 @@ const CommitItem = ({
               {/* Author */}
               <div className="flex items-center gap-2 text-sm">
                 <Avatar className="h-6 w-6">
-                  <AvatarImage src={commit.author.avatar} alt={commit.author.name} />
+                  <AvatarImage src={getCommitAuthorAvatar(commit)} alt={getCommitAuthorDisplay(commit)} />
                   <AvatarFallback>
-                    {commit.author.name.charAt(0).toUpperCase()}
+                    {getCommitAuthorInitials(commit)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-right">
                   <div className="font-medium text-gray-900">
-                    {commit.author.username || commit.author.name}
+                    {getCommitAuthorDisplay(commit)}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {commit.author.name !== commit.author.username && commit.author.name}
+                    {/* Additional author info if needed */}
                   </div>
                 </div>
               </div>

@@ -95,7 +95,7 @@ const problemSchema = new mongoose.Schema({
     },
     role: {
       type: String,
-      enum: ['creator', 'developer'],
+      enum: ['creator', 'developer', 'lead'],
       default: 'developer'
     }
   }],

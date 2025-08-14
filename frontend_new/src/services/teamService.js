@@ -95,5 +95,36 @@ export const teamService = {
       console.error('Leave team error:', error);
       throw new Error(error.response?.data?.message || 'Failed to leave team');
     }
+  },
+
+  
+  async getTeamMembers(projectId) {
+    try {
+      const response = await api.get(`/teams/projects/${projectId}/team`);
+      return response.data;
+    } catch (error) {
+      console.error('Get team members error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch team members');
+    }
+  },
+
+  async removeTeamMember(projectId, userId) {
+    try {
+      const response = await api.delete(`/teams/projects/${projectId}/members/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Remove team member error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to remove team member');
+    }
+  },
+
+  async updateMemberRole(projectId, userId, role) {
+    try {
+      const response = await api.put(`/teams/projects/${projectId}/members/${userId}/role`, { role });
+      return response.data;
+    } catch (error) {
+      console.error('Update member role error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to update member role');
+    }
   }
 };

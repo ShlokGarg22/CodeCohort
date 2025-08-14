@@ -5,7 +5,7 @@ import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { User, LogOut, Plus, Users, ChevronDown, Bell, Settings, UserCircle, Github } from 'lucide-react';
+import { User, LogOut, Plus, Users, ChevronDown, Bell, Settings, UserCircle, Github, GitBranch } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -167,16 +167,29 @@ const Header = () => {
                           
                           {/* GitHub Repository Link */}
                           {hasLockedRepo && (
-                            <DropdownMenuItem 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(gitHubRepo.url, '_blank');
-                              }}
-                              className="flex items-center gap-2 py-2 pl-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            >
-                              <Github className="h-3 w-3" />
-                              <span className="text-xs">View Repository</span>
-                            </DropdownMenuItem>
+                            <>
+                              <DropdownMenuItem 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.open(gitHubRepo.url, '_blank');
+                                }}
+                                className="flex items-center gap-2 py-2 pl-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              >
+                                <Github className="h-3 w-3" />
+                                <span className="text-xs">View Repository</span>
+                              </DropdownMenuItem>
+                              
+                              <DropdownMenuItem 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/project/${project._id}/version-history`);
+                                }}
+                                className="flex items-center gap-2 py-2 pl-6 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              >
+                                <GitBranch className="h-3 w-3" />
+                                <span className="text-xs">Version History</span>
+                              </DropdownMenuItem>
+                            </>
                           )}
                         </div>
                       );

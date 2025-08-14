@@ -8,7 +8,9 @@ const {
   getCreatorJoinRequests,
   getUserJoinRequests,
   leaveTeam,
-  getTeamMembers
+  getTeamMembers,
+  removeTeamMember,
+  updateMemberRole
 } = require('../controllers/teamController');
 
 // All routes require authentication
@@ -22,5 +24,7 @@ router.put('/requests/:requestId/respond', respondToJoinRequest);
 router.get('/requests/my', getUserJoinRequests);
 router.get('/projects/:projectId/team', getTeamMembers);
 router.delete('/projects/:projectId/leave', leaveTeam);
+router.delete('/projects/:projectId/members/:userId', removeTeamMember);
+router.put('/projects/:projectId/members/:userId/role', updateMemberRole);
 
 module.exports = router;

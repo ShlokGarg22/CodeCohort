@@ -1,4 +1,5 @@
 require('dotenv').config();
+const dns = require('dns');
 const express = require('express');
 const mongoose = require("mongoose");
 const cors = require('cors');
@@ -13,6 +14,14 @@ const problemRouter = require('./routes/problems');
 const taskRouter = require('./routes/tasks');
 const teamRouter = require('./routes/teams');
 const uploadRouter = require('./routes/upload');
+
+// Force reliable public DNS resolvers to avoid local/ISP DNS issues with SRV/TXT lookups
+// This helps resolve errors like: queryTxt ESERVFAIL cluster0.x.mongodb.net
+try {
+  dns.setServers(['1.1.1.1', '8.8.8.8']);
+} catch (e) {
+  // Non-fatal if setting servers fails; continue with system defaults
+}
 
 const app = express();
 const server = createServer(app);
@@ -301,18 +310,47 @@ app.use((req, res) => {
 });
 
 async function main(){
-    try {
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/codecohort');
-        console.log('✅ Connected to MongoDB');
-        
-        server.listen(5000, () => {
-            console.log("🚀 Server started on port 5000");
-            console.log("📡 Socket.IO server ready for connections");
-        });
-    } catch (error) {
-        console.error('❌ Database connection failed:', error);
+  const primaryUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/codecohort';
+  const fallbackUri = 'mongodb://127.0.0.1:27017/codecohort';
+
+  const connectOptions = {
+    serverSelectionTimeoutMS: 15000
+  };
+
+  const tryConnect = async (uri, label) => {
+    console.log(`🔗 Attempting MongoDB connection [${label}] → ${uri.startsWith('mongodb+srv://') ? 'SRV' : 'STD'} URI`);
+    await mongoose.connect(uri, connectOptions);
+    console.log(`✅ Connected to MongoDB [${label}]`);
+  };
+
+  try {
+    await tryConnect(primaryUri, 'primary');
+  } catch (error) {
+    console.error('❌ Primary database connection failed:', error);
+
+    const looksLikeDnsIssue =
+      String(error?.code).toUpperCase() === 'ESERVFAIL' ||
+      /queryTxt|ENOTFOUND|EAI_AGAIN/i.test(String(error?.message || ''));
+
+    const usedSrv = primaryUri.startsWith('mongodb+srv://');
+
+    if (looksLikeDnsIssue && usedSrv) {
+      console.warn('⚠️ Detected DNS failure with SRV URI. Falling back to direct localhost connection.');
+      try {
+        await tryConnect(fallbackUri, 'fallback-local');
+      } catch (fallbackError) {
+        console.error('❌ Fallback database connection failed:', fallbackError);
         process.exit(1);
+      }
+    } else {
+      process.exit(1);
     }
+  }
+
+  server.listen(5000, () => {
+    console.log('🚀 Server started on port 5000');
+    console.log('📡 Socket.IO server ready for connections');
+  });
 }
 
 main().catch(err => console.error(err));

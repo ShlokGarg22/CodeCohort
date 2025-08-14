@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useProjectAccess } from '../hooks/useProjectAccess';
 import { problemService } from '../services/problemService';
 import KanbanBoard from './KanbanBoard';
+import GitHubRepositoryInput from './VersionHistory/GitHubRepositoryInput';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { 
   ArrowLeft, 
   Users, 
@@ -15,7 +18,13 @@ import {
   Clock,
   Star,
   Code,
-  AlertCircle
+  AlertCircle,
+  Crown,
+  Shield,
+  Github,
+  GitBranch,
+  Settings,
+  BookOpen
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -24,53 +33,34 @@ const ProjectBoard = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [project, setProject] = useState(null);
+  const { 
+    loading: accessLoading, 
+    hasAccess, 
+    isCreator, 
+    isTeamMember, 
+    memberRole,
+    project,
+    canAccessRepository,
+    canViewVersionHistory,
+    error: accessError,
+    refetch: refetchAccess
+  } = useProjectAccess(projectId);
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('board');
 
   useEffect(() => {
-    if (user) {
-      fetchProject();
-    }
-  }, [projectId, user]);
-
-  const fetchProject = async () => {
-    if (!user) {
-      return; // Wait for user to be loaded
-    }
-    
-    try {
-      setLoading(true);
-      const response = await problemService.getProblemById(projectId);
-      const projectData = response.data;
-      
-      // Check if user has access to this project
-      const isCreator = projectData.createdBy?._id === user?._id;
-      const isAdmin = user?.role === 'admin';
-      const isTeamMember = projectData.teamMembers?.some(member => 
-        (member.user?._id || member._id) === user?._id
-      );
-      
-      if (!isCreator && !isAdmin && !isTeamMember) {
-        setError('You do not have access to this project');
-        toast.error('Access denied. You are not a member of this project.');
-        return;
-      }
-      
-      setProject(projectData);
-    } catch (error) {
-      console.error('Error fetching project:', error);
-      if (error.response?.status === 403) {
-        setError('Access denied. You are not a member of this project.');
-        toast.error('Access denied. You are not a member of this project.');
-      } else {
-        setError('Failed to load project');
-        toast.error('Failed to load project');
-      }
-    } finally {
+    // When access check is complete, set loading to false
+    if (!accessLoading) {
       setLoading(false);
+      if (accessError) {
+        setError(accessError);
+      } else if (!hasAccess) {
+        setError('You do not have access to this project');
+      }
     }
-  };
+  }, [accessLoading, hasAccess, accessError]);
 
   const handleGoBack = () => {
     navigate('/dashboard');
@@ -83,6 +73,12 @@ const ProjectBoard = () => {
       case 'hard': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const handleRepositoryChange = (url, repoData, isLocked) => {
+    // Refresh the project access data to get updated repository info
+    refetchAccess();
+    toast.success('Repository settings updated!');
   };
 
   if (!user || loading) {
@@ -128,9 +124,30 @@ const ProjectBoard = () => {
     );
   }
 
-  const isCreator = project.creator?._id === user?.id || project.createdBy?._id === user?.id;
-  const isAdmin = user?.role === 'admin';
-  const isTeamMember = project.teamMembers?.some(member => member._id === user?.id);
+  const getRoleIcon = (role) => {
+    switch (role) {
+      case 'creator':
+        return <Crown className="h-4 w-4" />;
+      case 'lead':
+        return <Shield className="h-4 w-4" />;
+      default:
+        return <User className="h-4 w-4" />;
+    }
+  };
+
+  const getRoleBadgeColor = (role) => {
+    if (isCreator) return 'bg-purple-100 text-purple-700';
+    if (user?.role === 'admin') return 'bg-red-100 text-red-700';
+    if (memberRole === 'lead') return 'bg-blue-100 text-blue-700';
+    return 'bg-green-100 text-green-700';
+  };
+
+  const getRoleDisplayName = () => {
+    if (isCreator) return 'Creator';
+    if (user?.role === 'admin') return 'Admin';
+    if (memberRole === 'lead') return 'Team Lead';
+    return 'Developer';
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -170,13 +187,38 @@ const ProjectBoard = () => {
                 </div>
                 
                 {/* Role Badge */}
-                <Badge className={
-                  isCreator ? 'bg-purple-100 text-purple-700' :
-                  isAdmin ? 'bg-red-100 text-red-700' :
-                  'bg-blue-100 text-blue-700'
-                }>
-                  {isCreator ? 'Creator' : isAdmin ? 'Admin' : 'Team Member'}
+                <Badge className={getRoleBadgeColor()}>
+                  <div className="flex items-center gap-1">
+                    {getRoleIcon(memberRole)}
+                    {getRoleDisplayName()}
+                  </div>
                 </Badge>
+
+                {/* Repository Access */}
+                {canAccessRepository && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(project.githubRepository.url, '_blank')}
+                    className="flex items-center gap-2"
+                  >
+                    <Github className="h-4 w-4" />
+                    Repository
+                  </Button>
+                )}
+
+                {/* Version History Access */}
+                {canViewVersionHistory && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/project/${projectId}/version-history`)}
+                    className="flex items-center gap-2"
+                  >
+                    <GitBranch className="h-4 w-4" />
+                    Version History
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -296,8 +338,92 @@ const ProjectBoard = () => {
           </CardContent>
         </Card>
 
-        {/* Kanban Board */}
-        <KanbanBoard projectId={projectId} projectData={project} />
+        {/* Main Content - Tabbed Interface */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+            <TabsList className={`grid w-full ${isCreator && canViewVersionHistory ? 'grid-cols-3' : isCreator || canViewVersionHistory ? 'grid-cols-2' : 'grid-cols-1'} bg-gray-50 rounded-t-lg`}>
+              <TabsTrigger value="board" className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4" />
+                Project Board
+              </TabsTrigger>
+              {isCreator && (
+                <TabsTrigger value="repository" className="flex items-center gap-2">
+                  <Github className="h-4 w-4" />
+                  Repository Settings
+                </TabsTrigger>
+              )}
+              {canViewVersionHistory && (
+                <TabsTrigger value="version" className="flex items-center gap-2">
+                  <GitBranch className="h-4 w-4" />
+                  Version History
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </div>
+
+          <TabsContent value="board" className="space-y-6">
+            <KanbanBoard projectId={projectId} projectData={project} />
+          </TabsContent>
+
+          {isCreator && (
+            <TabsContent value="repository" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Github className="h-5 w-5" />
+                    GitHub Repository Integration
+                  </CardTitle>
+                  <CardDescription>
+                    Link your project to a GitHub repository to enable version history tracking for your team
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <GitHubRepositoryInput
+                    projectId={projectId}
+                    initialRepoUrl={project?.githubRepository?.url || ''}
+                    isLocked={project?.githubRepository?.isLocked || false}
+                    canEdit={true}
+                    onRepositoryChange={handleRepositoryChange}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {canViewVersionHistory && (
+            <TabsContent value="version" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <GitBranch className="h-5 w-5" />
+                    Version History
+                  </CardTitle>
+                  <CardDescription>
+                    View detailed commit history and code changes
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <GitBranch className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Ready to View Version History
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      Your repository is linked and ready for version tracking
+                    </p>
+                    <Button
+                      onClick={() => navigate(`/project/${projectId}/version-history`)}
+                      className="flex items-center gap-2"
+                    >
+                      <GitBranch className="h-4 w-4" />
+                      Open Version History
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
     </div>
   );

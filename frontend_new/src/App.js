@@ -14,6 +14,8 @@ import CreateProblem from "./components/CreateProblem";
 import ProjectBoard from "./components/ProjectBoard";
 import ProfilePage from "./components/ProfilePage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RepositoryDebug from "./debug/RepositoryDebug";
+import GitHubRepoTester from "./components/GitHubRepoTester";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SocketProvider } from "./contexts/SocketContext";
 import { Toaster } from "sonner";
@@ -112,6 +114,18 @@ function App() {
               <Route 
                 path="/demo/version-history" 
                 element={<DemoVersionHistory />} 
+              />
+              <Route 
+                path="/test/github" 
+                element={<GitHubRepoTester />} 
+              />
+              <Route 
+                path="/debug/repository/:projectId" 
+                element={
+                  <ProtectedRoute>
+                    <RepositoryDebug />
+                  </ProtectedRoute>
+                } 
               />
               {/* Catch all route - redirect to home */}
               <Route path="*" element={<Navigate to="/" replace />} />

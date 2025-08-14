@@ -26,6 +26,7 @@ import {
   FileMinus,
   FileX
 } from 'lucide-react';
+import { getCommitAuthorDisplay, getCommitAuthorAvatar, getCommitAuthorInitials, getCommitDate } from '../../utils/commitUtils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -202,7 +203,7 @@ const CommitInfoCard = ({ commit, title }) => {
             <h4 className="font-medium text-gray-900 mb-1">Date</h4>
             <div className="flex items-center gap-2">
               <Calendar className="h-3 w-3 text-gray-400" />
-              <span className="text-gray-700">{formatDate(commit.author.date)}</span>
+              <span className="text-gray-700">{formatDate(getCommitDate(commit))}</span>
             </div>
           </div>
         </div>
@@ -212,17 +213,17 @@ const CommitInfoCard = ({ commit, title }) => {
           <h4 className="font-medium text-gray-900 mb-2">Author</h4>
           <div className="flex items-center gap-3">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={commit.author.avatar} alt={commit.author.name} />
+              <AvatarImage src={getCommitAuthorAvatar(commit)} alt={getCommitAuthorDisplay(commit)} />
               <AvatarFallback>
-                {commit.author.name.charAt(0).toUpperCase()}
+                {getCommitAuthorInitials(commit)}
               </AvatarFallback>
             </Avatar>
             <div>
               <div className="font-medium text-gray-900">
-                {commit.author.username || commit.author.name}
+                {getCommitAuthorDisplay(commit)}
               </div>
               <div className="text-xs text-gray-600">
-                {commit.author.email}
+                {commit.author?.email || 'No email'}
               </div>
             </div>
           </div>
