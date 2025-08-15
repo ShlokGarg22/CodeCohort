@@ -10,6 +10,8 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import ProjectChat from './ProjectChat';
 import { 
   ArrowLeft, 
   Users, 
@@ -49,6 +51,7 @@ const ProjectBoard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('board');
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     // When access check is complete, set loading to false
@@ -247,6 +250,23 @@ const ProjectBoard = () => {
                 <p className="text-gray-600 mb-4 leading-relaxed">
                   {project.description}
                 </p>
+
+                {/* Open Chat Button */}
+                <div className="mb-6">
+                  <Dialog open={chatOpen} onOpenChange={setChatOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="flex items-center gap-2">
+                        Open Chat
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl">
+                      <DialogHeader>
+                        <DialogTitle>Project Chat</DialogTitle>
+                      </DialogHeader>
+                      <ProjectChat projectId={projectId} />
+                    </DialogContent>
+                  </Dialog>
+                </div>
                 
                 {/* Technologies */}
                 {project.technologies && project.technologies.length > 0 && (

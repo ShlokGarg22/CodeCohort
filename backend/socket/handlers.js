@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const TeamRequest = require('../models/TeamRequest');
 const Problem = require('../models/Problem');
 const User = require('../models/User');
+const Message = require('../models/Message');
 
 /**
  * Setup Socket.IO event handlers for project join notifications
@@ -431,6 +432,103 @@ const setupJoinNotificationHandlers = (io) => {
       // Support both naming conventions from frontend ('join-project-room') and backend ('join_project_room')
       socket.on('join_project_room', handleJoinProjectRoom);
       socket.on('join-project-room', (projectIdOrData) => handleJoinProjectRoom(projectIdOrData));
+
+    // Presence: notify room when user connects/disconnects
+    try {
+      if (socket.userId) {
+        socket.broadcast.emit('presence:update', { userId: socket.userId, online: true });
+      }
+    } catch {}
+
+    // Chat: send message
+    socket.on('message:send', async (data, cb) => {
+      try {
+        const { projectId, content, mentions = [] } = data || {};
+        const userId = socket.userId;
+        if (!userId) return cb && cb({ success: false, message: 'Not authenticated' });
+
+        const project = await Problem.findById(projectId).select('createdBy teamMembers title');
+        if (!project) return cb && cb({ success: false, message: 'Project not found' });
+        const isMember = project.createdBy?.toString() === userId.toString() || project.teamMembers?.some(m => m.user?.toString() === userId.toString());
+        if (!isMember) return cb && cb({ success: false, message: 'Forbidden' });
+
+        // Basic sanitize on server side
+        const sanitize = (s) => (typeof s === 'string' ? s.replace(/[\u0000-\u001F\u007F]/g, '').trim() : '');
+        const clean = sanitize(content);
+        if (!clean) return cb && cb({ success: false, message: 'Empty message' });
+
+        const msg = await Message.create({ project: projectId, sender: userId, content: clean, mentions });
+        const populated = await msg.populate('sender', 'username fullName profileImage');
+
+        const payload = { type: 'message', projectId, message: populated };
+        const room = `project_${projectId}`;
+        io.to(room).emit('message:new', payload);
+
+        // Notify mentioned users in their user rooms
+        if (Array.isArray(mentions) && mentions.length) {
+          mentions.forEach((mId) => {
+            const room = `user_${mId}`;
+            io.to(room).emit('mention:notify', { projectId, message: populated });
+          });
+        }
+
+        cb && cb({ success: true, data: populated });
+      } catch (e) {
+        console.error('message:send error', e);
+        cb && cb({ success: false, message: 'Failed to send message' });
+      }
+    });
+
+    // Chat: edit message
+    socket.on('message:edit', async (data, cb) => {
+      try {
+        const { projectId, messageId, content } = data || {};
+        const userId = socket.userId;
+        if (!userId) return cb && cb({ success: false, message: 'Not authenticated' });
+        const msg = await Message.findById(messageId);
+        if (!msg || msg.project.toString() !== projectId) return cb && cb({ success: false, message: 'Not found' });
+        if (msg.sender.toString() !== userId.toString()) return cb && cb({ success: false, message: 'Forbidden' });
+        const clean = (content || '').trim(); if (!clean) return cb && cb({ success: false, message: 'Empty message' });
+        msg.content = clean; msg.edited = true; await msg.save();
+        const populated = await msg.populate('sender', 'username fullName profileImage');
+        io.to(`project_${projectId}`).emit('message:edit', { projectId, message: populated });
+        cb && cb({ success: true, data: populated });
+      } catch (e) {
+        console.error('message:edit error', e);
+        cb && cb({ success: false, message: 'Failed to edit message' });
+      }
+    });
+
+    // Chat: delete message (sender or creator)
+    socket.on('message:delete', async (data, cb) => {
+      try {
+        const { projectId, messageId } = data || {};
+        const userId = socket.userId;
+        if (!userId) return cb && cb({ success: false, message: 'Not authenticated' });
+        const msg = await Message.findById(messageId);
+        if (!msg || msg.project.toString() !== projectId) return cb && cb({ success: false, message: 'Not found' });
+        const project = await Problem.findById(projectId).select('createdBy');
+        const isAdmin = project && project.createdBy?.toString() === userId.toString();
+        const isSender = msg.sender.toString() === userId.toString();
+        if (!isAdmin && !isSender) return cb && cb({ success: false, message: 'Forbidden' });
+        msg.deletedAt = new Date(); await msg.save();
+        io.to(`project_${projectId}`).emit('message:delete', { projectId, messageId });
+        cb && cb({ success: true });
+      } catch (e) {
+        console.error('message:delete error', e);
+        cb && cb({ success: false, message: 'Failed to delete message' });
+      }
+    });
+
+    // Typing indicator
+    socket.on('typing:update', async (data) => {
+      try {
+        const { projectId, isTyping } = data || {};
+        const userId = socket.userId;
+        if (!userId) return;
+        io.to(`project_${projectId}`).emit('typing:update', { projectId, userId, isTyping: !!isTyping });
+      } catch {}
+    });
       
 
     // Handle disconnection
