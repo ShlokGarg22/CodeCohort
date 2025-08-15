@@ -82,28 +82,6 @@ const requestToJoinTeam = async (req, res) => {
       .populate('project', 'title description')
       .populate('creator', 'username');
 
-    // Send real-time notification
-    const io = req.app.get('io');
-    if (io) {
-      const notification = {
-        type: 'new-join-request',
-        requestId: populatedRequest._id.toString(),
-        projectId: project._id.toString(),
-        projectTitle: project.title,
-        requester: {
-          id: populatedRequest.requester._id.toString(),
-          username: populatedRequest.requester.username,
-          fullName: populatedRequest.requester.fullName,
-          profileImage: populatedRequest.requester.profileImage
-        },
-        message: populatedRequest.message,
-        timestamp: populatedRequest.createdAt
-      };
-
-      console.log('📡 Sending notification to creator:', project.createdBy._id);
-      io.to(`user-${project.createdBy._id}`).emit('new-join-request', notification);
-    }
-
     res.status(201).json({
       success: true,
       message: 'Join request sent successfully',
@@ -204,23 +182,6 @@ const respondToJoinRequest = async (req, res) => {
       responseMessage = `Your request to join "${request.project.title}" has been rejected.`;
     }
 
-    // Send notification to requester
-    const io = req.app.get('io');
-    if (io) {
-      const notification = {
-        type: 'join-request-response',
-        requestId: request._id.toString(),
-        projectId: request.project._id.toString(),
-        projectTitle: request.project.title,
-        status: request.status,
-        message: responseMessage,
-        timestamp: request.respondedAt
-      };
-
-      console.log('📡 Sending response to requester:', request.requester._id);
-      io.to(`user-${request.requester._id}`).emit('join-request-response', notification);
-    }
-
     res.json({
       success: true,
       message: `Request ${action}ed successfully`,
@@ -295,6 +256,53 @@ const getUserJoinRequests = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Get user join requests error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Cancel a join request (only by the requester)
+const cancelJoinRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const userId = req.user._id;
+
+    const request = await TeamRequest.findById(requestId);
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: 'Request not found'
+      });
+    }
+
+    // Check if the request belongs to the user
+    if (request.requester.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only cancel your own requests'
+      });
+    }
+
+    // Check if request is still pending
+    if (request.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only pending requests can be cancelled'
+      });
+    }
+
+    await TeamRequest.findByIdAndDelete(requestId);
+
+    res.json({
+      success: true,
+      message: 'Join request cancelled successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Cancel join request error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -533,6 +541,7 @@ module.exports = {
   getProjectJoinRequests,
   getCreatorJoinRequests,
   getUserJoinRequests,
+  cancelJoinRequest,
   leaveTeam,
   getTeamMembers,
   removeTeamMember,

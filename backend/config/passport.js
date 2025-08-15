@@ -1,8 +1,10 @@
 const passport = require('passport');
 const GitHubStrategy = require('passport-github2').Strategy;
 const User = require('../models/User');
+// Log and ensure environment presence for troubleshooting
+console.log('🔐 Passport GitHub setup: GITHUB_CLIENT_ID', !!process.env.GITHUB_CLIENT_ID);
 
-passport.use(new GitHubStrategy({
+const githubStrategy = new GitHubStrategy({
   clientID: process.env.GITHUB_CLIENT_ID,
   clientSecret: process.env.GITHUB_CLIENT_SECRET,
   callbackURL: process.env.GITHUB_CALLBACK_URL || "http://localhost:5000/api/v1/auth/github/callback"
@@ -55,8 +57,16 @@ async (accessToken, refreshToken, profile, done) => {
     console.error('GitHub OAuth error:', error);
     return done(error, null);
   }
-}));
+});
 
+// Ensure the strategy is named 'github' explicitly
+try {
+  githubStrategy.name = githubStrategy.name || 'github';
+  passport.use(githubStrategy);
+  console.log('✅ GitHub strategy registered as:', githubStrategy.name);
+} catch (e) {
+  console.error('❌ Failed to register GitHub strategy:', e);
+}
 passport.serializeUser((user, done) => {
   done(null, user._id);
 });

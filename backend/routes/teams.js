@@ -7,6 +7,7 @@ const {
   getProjectJoinRequests,
   getCreatorJoinRequests,
   getUserJoinRequests,
+  cancelJoinRequest,
   leaveTeam,
   getTeamMembers,
   removeTeamMember,
@@ -22,6 +23,7 @@ router.get('/projects/:projectId/requests', getProjectJoinRequests);
 router.get('/requests/creator', getCreatorJoinRequests);
 router.put('/requests/:requestId/respond', respondToJoinRequest);
 router.get('/requests/my', getUserJoinRequests);
+router.delete('/requests/:requestId/cancel', cancelJoinRequest);
 router.get('/projects/:projectId/team', getTeamMembers);
 router.delete('/projects/:projectId/leave', leaveTeam);
 router.delete('/projects/:projectId/members/:userId', removeTeamMember);

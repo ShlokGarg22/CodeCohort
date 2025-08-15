@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: __dirname + '/.env' });
 const dns = require('dns');
 const express = require('express');
 const mongoose = require("mongoose");
@@ -23,8 +23,14 @@ try {
   // Non-fatal if setting servers fails; continue with system defaults
 }
 
+// Import socket handlers
+const { setupJoinNotificationHandlers } = require('./socket/handlers');
+
 const app = express();
 const server = createServer(app);
+
+// Track connected users
+const connectedUsers = new Map();
 
 // Enhanced Socket.IO configuration
 const io = new Server(server, {
@@ -40,216 +46,8 @@ const io = new Server(server, {
 // Make io available to routes
 app.set('io', io);
 
-// Socket connection management
-const connectedUsers = new Map(); // socketId -> userId
-const userSockets = new Map(); // userId -> socketId
-
-// JWT token verification function
-const verifyToken = (token) => {
-  try {
-    return jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-  } catch (error) {
-    throw new Error('Invalid token');
-  }
-};
-
-// Socket.io connection handling
-io.on('connection', (socket) => {
-  console.log('🔌 New socket connection:', socket.id);
-
-  // Authenticate and join user room
-  socket.on('authenticate', async (data) => {
-    try {
-      const { userId, token } = data;
-      
-      if (!userId) {
-        console.log('❌ Authentication failed: No userId provided');
-        socket.emit('auth-error', { message: 'User ID is required' });
-        return;
-      }
-
-      // If token is provided, validate it
-      if (token) {
-        try {
-          const decoded = verifyToken(token);
-          
-          // Verify that the token belongs to the claimed user
-          if (decoded.userId !== userId) {
-            console.log('❌ Authentication failed: Token user mismatch');
-            socket.emit('auth-error', { message: 'Invalid token for user' });
-            return;
-          }
-
-          // Verify user exists in database
-          const user = await User.findById(userId);
-          if (!user) {
-            console.log('❌ Authentication failed: User not found');
-            socket.emit('auth-error', { message: 'User not found' });
-            return;
-          }
-
-          console.log(`✅ Token validated for user ${userId}`);
-        } catch (tokenError) {
-          console.log('❌ Authentication failed: Invalid token');
-          socket.emit('auth-error', { message: 'Invalid or expired token' });
-          return;
-        }
-      } else {
-        // If no token provided, just use userId (for development/testing)
-        console.log(`⚠️ No token provided for user ${userId} - proceeding without token validation`);
-      }
-
-      // Store user connection info
-      connectedUsers.set(socket.id, userId);
-      userSockets.set(userId, socket.id);
-      
-      // Join user's personal room for notifications
-      socket.join(`user-${userId}`);
-      console.log(`✅ User ${userId} authenticated and joined room: user-${userId}`);
-      
-      // Emit authentication success
-      socket.emit('authenticated', { userId });
-      
-    } catch (error) {
-      console.error('❌ Authentication error:', error);
-      socket.emit('auth-error', { message: 'Authentication failed' });
-    }
-  });
-
-  // Join project room for real-time collaboration
-  socket.on('join-project-room', (projectId) => {
-    if (!connectedUsers.has(socket.id)) {
-      console.log('❌ User not authenticated, cannot join project room');
-      return;
-    }
-    
-    socket.join(`project-${projectId}`);
-    console.log(`📁 User joined project room: project-${projectId}`);
-  });
-
-  // Leave project room
-  socket.on('leave-project-room', (projectId) => {
-    socket.leave(`project-${projectId}`);
-    console.log(`📁 User left project room: project-${projectId}`);
-  });
-
-  // Handle team join request (from user to creator)
-  socket.on('send-join-request', (data) => {
-    try {
-      const { projectId, creatorId, requesterData, message } = data;
-      
-      if (!projectId || !creatorId || !requesterData) {
-        console.log('❌ Invalid join request data:', data);
-        return;
-      }
-
-      console.log(`📨 Join request from ${requesterData.username} to creator ${creatorId} for project ${projectId}`);
-      
-      // Send notification to creator
-      io.to(`user-${creatorId}`).emit('new-join-request', {
-        requestId: Date.now().toString(), // Temporary ID for socket requests
-        projectId,
-        projectTitle: requesterData.projectTitle,
-        requester: {
-          id: requesterData.id,
-          username: requesterData.username,
-          fullName: requesterData.fullName,
-          profileImage: requesterData.profileImage
-        },
-        message: message || '',
-        timestamp: new Date(),
-        isSocketRequest: true
-      });
-      
-      console.log(`✅ Join request notification sent to creator ${creatorId}`);
-      
-    } catch (error) {
-      console.error('❌ Error sending join request:', error);
-    }
-  });
-
-  // Handle join request response (from creator to user)
-  socket.on('handle-join-request', (data) => {
-    try {
-      const { requesterId, projectId, approved, projectData } = data;
-      
-      if (!requesterId || !projectId) {
-        console.log('❌ Invalid join request response data:', data);
-        return;
-      }
-
-      console.log(`📨 Join request response to ${requesterId} for project ${projectId}: ${approved ? 'APPROVED' : 'REJECTED'}`);
-      
-      // Send notification to requester
-      io.to(`user-${requesterId}`).emit('join-request-response', {
-        requestId: Date.now().toString(),
-        projectId,
-        projectTitle: projectData?.title || 'Project',
-        approved,
-        timestamp: new Date()
-      });
-      
-      console.log(`✅ Join request response sent to user ${requesterId}`);
-      
-    } catch (error) {
-      console.error('❌ Error handling join request response:', error);
-    }
-  });
-
-  // Handle task updates for real-time collaboration
-  socket.on('task-updated', (data) => {
-    try {
-      const { projectId, task } = data;
-      
-      if (!projectId || !task) {
-        console.log('❌ Invalid task update data:', data);
-        return;
-      }
-
-      console.log(`📝 Task updated in project ${projectId}:`, task.title);
-      
-      // Broadcast to all users in the project room (except sender)
-      socket.to(`project-${projectId}`).emit('task-updated', task);
-      
-    } catch (error) {
-      console.error('❌ Error broadcasting task update:', error);
-    }
-  });
-
-  // Handle user typing indicator
-  socket.on('user-typing', (data) => {
-    const { projectId, userId, isTyping } = data;
-    socket.to(`project-${projectId}`).emit('user-typing', { userId, isTyping });
-  });
-
-  // Handle disconnect
-  socket.on('disconnect', () => {
-    const userId = connectedUsers.get(socket.id);
-    
-    if (userId) {
-      console.log(`🔌 User ${userId} disconnected (socket: ${socket.id})`);
-      connectedUsers.delete(socket.id);
-      userSockets.delete(userId);
-    } else {
-      console.log(`🔌 Anonymous user disconnected (socket: ${socket.id})`);
-    }
-  });
-
-  // Handle connection errors
-  socket.on('error', (error) => {
-    console.error('❌ Socket error:', error);
-  });
-});
-
-// Utility function to get socket by user ID
-const getUserSocket = (userId) => {
-  const socketId = userSockets.get(userId);
-  return socketId ? io.sockets.sockets.get(socketId) : null;
-};
-
-// Make utility functions available to routes
-app.set('getUserSocket', getUserSocket);
-app.set('userSockets', userSockets);
+// Setup socket handlers for join notifications
+setupJoinNotificationHandlers(io);
 
 // Middleware
 app.use(cors({
@@ -287,7 +85,9 @@ app.get('/api/v1/health', (req, res) => {
     success: true,
     message: 'Server is running successfully',
     connectedUsers: connectedUsers.size,
-    activeConnections: io.engine.clientsCount
+    activeConnections: io.engine.clientsCount,
+    database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -311,45 +111,35 @@ app.use((req, res) => {
 
 async function main(){
   const primaryUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/codecohort';
-  const fallbackUri = 'mongodb://127.0.0.1:27017/codecohort';
+  
+  console.log('🔍 Environment check:');
+  console.log('MONGODB_URI from env:', process.env.MONGODB_URI ? 'SET' : 'NOT SET');
+  console.log('Using URI:', primaryUri.replace(/\/\/.*:.*@/, '//***:***@')); // Hide credentials
 
   const connectOptions = {
-    serverSelectionTimeoutMS: 15000
+    serverSelectionTimeoutMS: 30000,
+    socketTimeoutMS: 45000,
+    family: 4 // Use IPv4, skip IPv6
   };
 
   const tryConnect = async (uri, label) => {
-    console.log(`🔗 Attempting MongoDB connection [${label}] → ${uri.startsWith('mongodb+srv://') ? 'SRV' : 'STD'} URI`);
+    console.log(`🔗 Attempting MongoDB connection [${label}] → ${uri.startsWith('mongodb+srv://') ? 'Atlas Cloud' : 'Local'}`);
     await mongoose.connect(uri, connectOptions);
     console.log(`✅ Connected to MongoDB [${label}]`);
   };
 
   try {
-    await tryConnect(primaryUri, 'primary');
+    await tryConnect(primaryUri, 'MongoDB Atlas');
   } catch (error) {
-    console.error('❌ Primary database connection failed:', error);
-
-    const looksLikeDnsIssue =
-      String(error?.code).toUpperCase() === 'ESERVFAIL' ||
-      /queryTxt|ENOTFOUND|EAI_AGAIN/i.test(String(error?.message || ''));
-
-    const usedSrv = primaryUri.startsWith('mongodb+srv://');
-
-    if (looksLikeDnsIssue && usedSrv) {
-      console.warn('⚠️ Detected DNS failure with SRV URI. Falling back to direct localhost connection.');
-      try {
-        await tryConnect(fallbackUri, 'fallback-local');
-      } catch (fallbackError) {
-        console.error('❌ Fallback database connection failed:', fallbackError);
-        process.exit(1);
-      }
-    } else {
-      process.exit(1);
-    }
+    console.error('❌ MongoDB connection failed:', error.message);
+    console.error('💡 Please check your internet connection and MongoDB Atlas credentials');
+    process.exit(1);
   }
 
   server.listen(5000, () => {
     console.log('🚀 Server started on port 5000');
     console.log('📡 Socket.IO server ready for connections');
+    console.log('💾 Database: Connected to MongoDB Atlas');
   });
 }
 

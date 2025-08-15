@@ -131,6 +131,7 @@ const getProblems = async (req, res) => {
 
     const problems = await Problem.find(filter)
       .populate('createdBy', 'username fullName')
+      .populate('teamMembers.user', '_id username fullName profileImage')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -230,6 +231,33 @@ const getMyProblems = async (req, res) => {
 
   } catch (error) {
     console.error('Get my problems error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Get problems that current user has joined
+const getJoinedProblems = async (req, res) => {
+  try {
+    // Find problems where the user is a team member
+    const problems = await Problem.find({
+      'teamMembers.user': req.user._id
+    })
+    .populate('createdBy', 'username fullName email')
+    .populate('teamMembers.user', 'username fullName profileImage')
+    .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        problems
+      }
+    });
+
+  } catch (error) {
+    console.error('Get joined problems error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -529,6 +557,7 @@ module.exports = {
   getProblems,
   getProblemById,
   getMyProblems,
+  getJoinedProblems,
   updateProblem,
   deleteProblem,
   updateGitHubRepository,

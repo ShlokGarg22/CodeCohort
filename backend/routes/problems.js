@@ -6,6 +6,7 @@ const {
   getProblems,
   getProblemById,
   getMyProblems,
+  getJoinedProblems,
   updateProblem,
   deleteProblem,
   updateGitHubRepository,
@@ -20,9 +21,13 @@ router.get('/', getProblems); // Get all problems (public)
 // Protected routes
 router.use(authenticateToken); // Apply auth middleware to all routes below
 
+// Specific routes MUST come before parameterized routes
+router.get('/joined', getJoinedProblems); // Get problems user has joined
+router.get('/my/problems', getMyProblems); // Get my problems (creators only)
+
+// Parameterized routes come after specific routes
 router.get('/:id', getProblemById); // Get problem by ID (authenticated)
 router.post('/', createProblem); // Create new problem (creators only)
-router.get('/my/problems', getMyProblems); // Get my problems (creators only)
 router.put('/:id', updateProblem); // Update problem (creator/admin only)
 router.delete('/:id', deleteProblem); // Delete problem (creator/admin only)
 
