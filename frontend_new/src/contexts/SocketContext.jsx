@@ -127,24 +127,32 @@ export const SocketProvider = ({ children }) => {
       setConnectionStatus('reconnect-failed');
     });
 
-    // Handle incoming join requests (for creators)
-    newSocket.on('new-join-request', (data) => {
-      console.log('📨 New join request received:', data);
+    // Handle task updates for real-time collaboration
+    newSocket.on('task-updated', (taskData) => {
+      console.log('📝 Task updated:', taskData);
+      // This will be handled by the KanbanBoard component
+    });
+
+    // Join request notification handlers
+    newSocket.on('new_join_request', (notification) => {
+      console.log('📨 New join request received:', notification);
       
-      const notification = {
-        id: data.requestId || Date.now().toString(),
-        type: 'join-request',
+      // Add to join requests list
+      setJoinRequests(prev => [notification, ...prev]);
+      
+      // Add to general notifications
+      const generalNotification = {
+        id: notification.requestId,
+        type: 'join_request',
         title: 'New Team Join Request',
-        message: `${data.requester.username} wants to join "${data.projectTitle}"`,
-        timestamp: new Date(data.timestamp),
-        data: data
+        message: `${notification.requester.fullName || notification.requester.username} wants to join "${notification.projectTitle}"`,
+        timestamp: notification.timestamp,
+        data: notification
       };
-      
-      setJoinRequests(prev => [data, ...prev]);
-      setNotifications(prev => [notification, ...prev]);
+      setNotifications(prev => [generalNotification, ...prev]);
 
       // Show toast notification
-      toast.info(`${data.requester.username} wants to join "${data.projectTitle}"`, {
+      toast.info(`${notification.requester.fullName || notification.requester.username} wants to join "${notification.projectTitle}"`, {
         action: {
           label: 'View',
           onClick: () => window.location.href = '/dashboard'
@@ -153,48 +161,54 @@ export const SocketProvider = ({ children }) => {
       });
     });
 
-    // Handle join request responses (for developers)
-    newSocket.on('join-request-response', (data) => {
-      console.log('📨 Join request response received:', data);
+    // Join request response handlers
+    newSocket.on('join_request_response', (response) => {
+      console.log('📨 Join request response received:', response);
       
-      const notification = {
-        id: data.requestId || Date.now().toString(),
-        type: 'join-response',
-        title: data.approved ? 'Request Approved!' : 'Request Declined',
-        message: data.approved 
-          ? `You've been accepted to join "${data.projectTitle}"`
-          : `Your request to join "${data.projectTitle}" was declined`,
-        timestamp: new Date(data.timestamp),
-        data: data
+      const generalNotification = {
+        id: response.requestId,
+        type: 'join_response',
+        title: response.approved ? 'Request Approved!' : 'Request Declined',
+        message: response.message,
+        timestamp: response.timestamp,
+        data: response
       };
-      
-      setNotifications(prev => [notification, ...prev]);
+      setNotifications(prev => [generalNotification, ...prev]);
 
-      // Show toast notification
-      if (data.approved) {
-        toast.success(`You've been accepted to join "${data.projectTitle}"!`, {
+      // Show appropriate toast
+      if (response.approved) {
+        toast.success(`You've been accepted to join "${response.projectTitle}"!`, {
           action: {
             label: 'View Project',
-            onClick: () => window.location.href = `/project/${data.projectId}`
+            onClick: () => window.location.href = `/project/${response.projectId}`
           },
           duration: 8000
         });
         
-        // Refresh the page after a delay to update navigation
-        setTimeout(() => {
-          window.location.reload();
-        }, 3000);
+        // Let individual components handle data refresh instead of forcing a page reload
+        console.log('✅ Join request approved, components will refresh data automatically');
       } else {
-        toast.error(`Your request to join "${data.projectTitle}" was declined`, {
+        toast.error(`Your request to join "${response.projectTitle}" was declined`, {
           duration: 6000
         });
       }
     });
 
-    // Handle task updates for real-time collaboration
-    newSocket.on('task-updated', (taskData) => {
-      console.log('📝 Task updated:', taskData);
-      // This will be handled by the KanbanBoard component
+    // Team member joined notification
+    newSocket.on('team_member_joined', (data) => {
+      console.log('👥 New team member joined:', data);
+      
+      const notification = {
+        id: Date.now().toString(),
+        type: 'team_update',
+        title: 'New Team Member',
+        message: `${data.newMember.fullName || data.newMember.username} joined "${data.projectTitle}"`,
+        timestamp: data.timestamp,
+        data: data
+      };
+      setNotifications(prev => [notification, ...prev]);
+
+      toast.success(`${data.newMember.fullName || data.newMember.username} joined the team!`);
     });
 
     // Handle user typing indicators
@@ -233,47 +247,96 @@ export const SocketProvider = ({ children }) => {
     }
   }, [authIsAuthenticated, user, initializeSocket]);
 
-  // Function to send join request via socket
-  const sendJoinRequest = useCallback((projectId, creatorId, requesterData, message = '') => {
-    if (!socket || !isAuthenticated) {
-      console.error('❌ Socket not connected or not authenticated');
-      throw new Error('Socket connection not available');
-    }
+  // Send join request function
+  const sendJoinRequest = useCallback((projectId, message = '') => {
+    return new Promise((resolve, reject) => {
+      if (!socket || !isAuthenticated) {
+        reject(new Error('Socket not connected or not authenticated'));
+        return;
+      }
 
-    console.log('📨 Sending join request via socket:', {
-      projectId,
-      creatorId,
-      requesterData: requesterData.username,
-      message
-    });
+      console.log('📨 Sending join request:', { projectId, message });
 
-    socket.emit('send-join-request', {
-      projectId,
-      creatorId,
-      requesterData,
-      message
+      // Set up success listener
+      const onSuccess = (data) => {
+        console.log('✅ Join request sent successfully:', data);
+        socket.off('join_request_sent', onSuccess);
+        socket.off('join_request_error', onError);
+        resolve(data);
+      };
+
+      // Set up error listener
+      const onError = (error) => {
+        console.error('❌ Join request failed:', error);
+        socket.off('join_request_sent', onSuccess);
+        socket.off('join_request_error', onError);
+        reject(new Error(error.message));
+      };
+
+      socket.on('join_request_sent', onSuccess);
+      socket.on('join_request_error', onError);
+
+      // Emit the request
+      socket.emit('send_join_request', {
+        projectId,
+        message
+      });
+
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        socket.off('join_request_sent', onSuccess);
+        socket.off('join_request_error', onError);
+        reject(new Error('Request timeout'));
+      }, 10000);
     });
   }, [socket, isAuthenticated]);
 
-  // Function to respond to join request via socket
-  const respondToJoinRequest = useCallback((requesterId, projectId, approved, projectData) => {
-    if (!socket || !isAuthenticated) {
-      console.error('❌ Socket not connected or not authenticated');
-      throw new Error('Socket connection not available');
-    }
+  // Respond to join request function
+  const respondToJoinRequest = useCallback((requestId, action, message = '') => {
+    return new Promise((resolve, reject) => {
+      if (!socket || !isAuthenticated) {
+        reject(new Error('Socket not connected or not authenticated'));
+        return;
+      }
 
-    console.log('📨 Sending join request response via socket:', {
-      requesterId,
-      projectId,
-      approved,
-      projectData: projectData?.title
-    });
+      console.log('📨 Responding to join request:', { requestId, action, message });
 
-    socket.emit('handle-join-request', {
-      requesterId,
-      projectId,
-      approved,
-      projectData
+      // Set up success listener
+      const onSuccess = (data) => {
+        console.log('✅ Join request response sent successfully:', data);
+        socket.off('join_response_sent', onSuccess);
+        socket.off('join_response_error', onError);
+        
+        // Remove from local state
+        setJoinRequests(prev => prev.filter(req => req.requestId !== requestId));
+        
+        resolve(data);
+      };
+
+      // Set up error listener
+      const onError = (error) => {
+        console.error('❌ Join request response failed:', error);
+        socket.off('join_response_sent', onSuccess);
+        socket.off('join_response_error', onError);
+        reject(new Error(error.message));
+      };
+
+      socket.on('join_response_sent', onSuccess);
+      socket.on('join_response_error', onError);
+
+      // Emit the response
+      socket.emit('respond_join_request', {
+        requestId,
+        action,
+        message
+      });
+
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        socket.off('join_response_sent', onSuccess);
+        socket.off('join_response_error', onError);
+        reject(new Error('Response timeout'));
+      }, 10000);
     });
   }, [socket, isAuthenticated]);
 

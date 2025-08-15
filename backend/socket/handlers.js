@@ -18,18 +18,19 @@ const setupJoinNotificationHandlers = (io) => {
     console.log(`🔌 User connected: ${socket.id}`);
 
     // User authentication and room joining
-    socket.on('authenticate', async (data) => {
-      try {
-        const { userId, token } = data;
-        
-        if (!userId || !token) {
-          socket.emit('auth_error', { message: 'Missing authentication data' });
-          return;
-        }
+      socket.on('authenticate', async (data) => {
+        try {
+          const { userId, token } = data;
 
-        // Store user info in socket
-        socket.userId = userId;
-        socket.userToken = token;
+          // Allow token to be optional for dev/UX: require at least userId
+          if (!userId) {
+            socket.emit('auth_error', { message: 'Missing authentication data: userId required' });
+            return;
+          }
+
+          // Store user info in socket (token optional)
+          socket.userId = userId;
+          socket.userToken = token || null;
 
         // Join user's personal notification room
         const userRoom = `user_${userId}`;
@@ -176,9 +177,51 @@ const setupJoinNotificationHandlers = (io) => {
           timestamp: new Date().toISOString()
         };
 
-        // Send notification to project creator
-        const creatorRoom = `user_${project.createdBy._id}`;
+        // Send notification to project creator (attempt room emit first)
+        const creatorIdStr = project.createdBy._id.toString();
+        const creatorRoom = `user_${creatorIdStr}`;
         io.to(creatorRoom).emit('new_join_request', notification);
+
+        // Check how many sockets are in the creator room and log it for debugging
+        try {
+          const socketsInRoom = await io.in(creatorRoom).fetchSockets();
+          console.log(`📡 Attempted to notify creator. sockets in ${creatorRoom}:`, socketsInRoom.length);
+          if (socketsInRoom.length > 0) {
+            console.log('🔍 Socket IDs in creator room:', socketsInRoom.map(s => s.id));
+            try {
+              console.log('🔎 Creator room socket userIds:', socketsInRoom.map(s => ({ id: s.id, userId: s.userId || null, rooms: Array.from(s.rooms || []) })));
+            } catch (e) {
+              // ignore
+            }
+          }
+
+          // If no sockets found in room, fallback: iterate all connected sockets and emit to those with matching userId
+          if (socketsInRoom.length === 0) {
+            console.log(`⚠️ No sockets in room ${creatorRoom}. Falling back to direct socket.userId matching.`);
+            try {
+              // log all connected sockets for diagnosis
+              const allSockets = await io.fetchSockets();
+              console.log('🌐 Connected sockets count:', allSockets.length);
+              console.log('🌐 Connected sockets mapping:', allSockets.map(s => ({ id: s.id, userId: s.userId || null, rooms: Array.from(s.rooms || []) })));
+            } catch (e) {
+              // older socket.io versions may not support io.fetchSockets
+              console.log('ℹ️ io.fetchSockets not available, falling back to io.sockets.sockets iteration');
+            }
+
+            io.sockets.sockets.forEach((s) => {
+              try {
+                if (s.userId && s.userId.toString() === creatorIdStr) {
+                  s.emit('new_join_request', notification);
+                  console.log(`📡 Fallback: emitted new_join_request to socket ${s.id} for user ${creatorIdStr}`);
+                }
+              } catch (e) {
+                // continue
+              }
+            });
+          }
+        } catch (err) {
+          console.error('❌ Error checking creator room sockets:', err);
+        }
 
         console.log(`📡 Sent join request notification to creator in room: ${creatorRoom}`);
 
@@ -348,42 +391,47 @@ const setupJoinNotificationHandlers = (io) => {
     });
 
     // Handle project room joining for real-time collaboration
-    socket.on('join_project_room', async (data) => {
-      try {
-        const { projectId } = data;
-        const userId = socket.userId;
+      const handleJoinProjectRoom = async (data) => {
+        try {
+          const { projectId } = data || (typeof data === 'string' ? { projectId: data } : {});
+          const userId = socket.userId;
 
-        if (!userId) {
-          socket.emit('project_room_error', { message: 'Not authenticated' });
-          return;
-        }
+          if (!userId) {
+            socket.emit('project_room_error', { message: 'Not authenticated' });
+            return;
+          }
 
-        // Verify user is a member of this project
-        const project = await Problem.findById(projectId);
-        const isMember = project?.teamMembers?.some(member => 
-          member.user?.toString() === userId.toString()
-        ) || project?.createdBy?.toString() === userId.toString();
+          // Verify user is a member of this project
+          const project = await Problem.findById(projectId);
+          const isMember = project?.teamMembers?.some(member => 
+            member.user?.toString() === userId.toString()
+          ) || project?.createdBy?.toString() === userId.toString();
 
-        if (!isMember) {
-          socket.emit('project_room_error', { 
-            message: 'You are not a member of this project' 
-          });
-          return;
-        }
+          if (!isMember) {
+            socket.emit('project_room_error', { 
+              message: 'You are not a member of this project' 
+            });
+            return;
+          }
 
-        const projectRoom = `project_${projectId}`;
-        socket.join(projectRoom);
+          const projectRoom = `project_${projectId}`;
+          socket.join(projectRoom);
         
-        console.log(`📁 User ${userId} joined project room: ${projectRoom}`);
-        socket.emit('project_room_joined', { projectId, room: projectRoom });
+          console.log(`📁 User ${userId} joined project room: ${projectRoom}`);
+          socket.emit('project_room_joined', { projectId, room: projectRoom });
 
-      } catch (error) {
-        console.error('❌ Project room join error:', error);
-        socket.emit('project_room_error', { 
-          message: error.message || 'Failed to join project room' 
-        });
-      }
-    });
+        } catch (error) {
+          console.error('❌ Project room join error:', error);
+          socket.emit('project_room_error', { 
+            message: error.message || 'Failed to join project room' 
+          });
+        }
+      };
+
+      // Support both naming conventions from frontend ('join-project-room') and backend ('join_project_room')
+      socket.on('join_project_room', handleJoinProjectRoom);
+      socket.on('join-project-room', (projectIdOrData) => handleJoinProjectRoom(projectIdOrData));
+      
 
     // Handle disconnection
     socket.on('disconnect', () => {

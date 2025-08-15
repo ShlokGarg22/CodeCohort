@@ -48,6 +48,87 @@ export const problemService = {
     }
   },
 
+  async getAllProblems() {
+    try {
+      const response = await api.get('/problems');
+      return {
+        success: true,
+        data: response.data?.problems || response.data || [],
+        problems: response.data?.problems || response.data || []
+      };
+    } catch (error) {
+      console.error('Get all problems error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch problems',
+        data: []
+      };
+    }
+  },
+
+  async getAvailableProblems() {
+    try {
+      const response = await api.get('/problems');
+      // Filter out problems where user is already a member
+      const allProblems = response.data?.problems || response.data || [];
+      return {
+        success: true,
+        data: {
+          problems: allProblems
+        }
+      };
+    } catch (error) {
+      console.error('Get available problems error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch available problems',
+        data: { problems: [] }
+      };
+    }
+  },
+
+  async getMyJoinedProblems() {
+    try {
+      const response = await api.get('/problems/joined');
+
+      // Backend may return either:
+      // { success: true, data: { problems: [...] } }
+      // or directly { problems: [...] }
+      const problemsFromBody = response.data?.data?.problems
+        || response.data?.problems
+        || response.data
+        || [];
+
+      // Ensure we return a plain array under data.problems
+      return {
+        success: true,
+        data: {
+          problems: Array.isArray(problemsFromBody) ? problemsFromBody : []
+        }
+      };
+    } catch (error) {
+      console.error('Get joined problems error:', error);
+      // If endpoint doesn't exist, try to get user's projects from user profile
+      try {
+        const userResponse = await api.get('/auth/profile');
+        const joinedProjects = userResponse.data?.user?.joinedProjects || [];
+        return {
+          success: true,
+          data: {
+            problems: joinedProjects
+          }
+        };
+      } catch (profileError) {
+        console.error('Get user profile error:', profileError);
+        return {
+          success: false,
+          message: 'Failed to fetch joined problems',
+          data: { problems: [] }
+        };
+      }
+    }
+  },
+
   // Alias for getAllProblems
   async getAllProblems(params = {}) {
     return this.getProblems(params);

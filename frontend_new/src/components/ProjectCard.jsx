@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Users, ArrowRight, Clock, UserCheck } from 'lucide-react';
+import JoinTeamButton from './JoinTeamButton';
+import { useAuth } from '../contexts/AuthContext';
 
 // Define colors for different difficulties and tech stack
 const difficultyColors = {
@@ -33,6 +35,23 @@ const techStackColors = {
 
 const ProjectCard = ({ project, onJoinTeam, isJoined }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const { user } = useAuth();
+
+  // Check if user is already a member of this project
+  const isAlreadyMember = user && project.teamMembers?.some(member => {
+    const memberId = member.user?._id || member.user?.id || member._id;
+    const userId = user._id || user.id;
+    console.log('Checking membership:', { memberId, userId, match: memberId === userId });
+    return memberId === userId;
+  }) || isJoined;
+
+  console.log('Project membership status:', {
+    projectId: project._id,
+    projectTitle: project.title,
+    isAlreadyMember,
+    teamMembers: project.teamMembers?.map(m => m.user?._id || m._id),
+    currentUserId: user?._id || user?.id
+  });
 
   return (
     <div 
@@ -114,20 +133,30 @@ const ProjectCard = ({ project, onJoinTeam, isJoined }) => {
         <div className="flex items-center justify-between pt-2">
           <div className="flex items-center space-x-2 text-sm text-gray-500">
             <Users size={16} />
-            <span>{project.participants?.length || 0} participants</span>
+            <span>{project.teamMembers?.length || 0} / {project.maxTeamSize || 5} members</span>
           </div>
           
-          <Button 
-            onClick={() => onJoinTeam(project)}
-            className={`bg-gray-900 hover:bg-gray-800 text-white px-6 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2 ${
-              isJoined ? 'bg-green-600 hover:bg-green-700' : ''
-            }`}
-            size="sm"
-            disabled={isJoined}
-          >
-            <span>{isJoined ? 'Request Sent' : 'Join Team'}</span>
-            <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-          </Button>
+          {/* Use new JoinTeamButton component or show already member status */}
+          {isAlreadyMember ? (
+            <Button 
+              variant="outline"
+              size="sm"
+              disabled
+              className="px-6 py-2 border-green-200 text-green-700 bg-green-50"
+            >
+              <UserCheck size={16} className="mr-2" />
+              Member
+            </Button>
+          ) : (
+            <JoinTeamButton 
+              projectId={project._id}
+              projectTitle={project.title}
+              isAlreadyMember={isAlreadyMember}
+              creatorId={project.creator?._id || project.createdBy}
+              size="sm"
+              className="px-6 py-2"
+            />
+          )}
         </div>
       </div>
     </div>

@@ -1,204 +1,296 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Bell, Check, X, MessageSquare, Clock } from 'lucide-react';
+import { Bell, Users, CheckCircle, XCircle, Clock, X } from 'lucide-react';
 import { useSocket } from '../contexts/SocketContext';
-import { useAuth } from '../contexts/AuthContext';
-import { teamService } from '../services/teamService';
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
+import { ScrollArea } from './ui/scroll-area';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
 
 const NotificationPanel = ({ isOpen, onClose }) => {
-  const { user } = useAuth();
-  const { joinRequests, notifications, clearJoinRequest, clearNotification, respondToJoinRequest } = useSocket();
-  const [processingRequests, setProcessingRequests] = useState(new Set());
+  const {
+    joinRequests,
+    notifications,
+    respondToJoinRequest,
+    clearNotification,
+    clearJoinRequest,
+    clearAllNotifications,
+    clearAllJoinRequests,
+    isAuthenticated
+  } = useSocket();
 
-  const handleRequestResponse = async (request, approved) => {
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'requests'
+  const [isLoading, setIsLoading] = useState({});
+
+  const handleJoinResponse = async (requestId, action, message = '') => {
+    setIsLoading(prev => ({ ...prev, [requestId]: action }));
+    
     try {
-      console.log('Responding to request:', { request, approved });
-      setProcessingRequests(prev => new Set([...prev, request.requestId]));
-
-      // Call API to handle the request
-      console.log('Calling teamService.respondToJoinRequest with:', request.requestId, approved ? 'approve' : 'reject');
-      const response = await teamService.respondToJoinRequest(request.requestId, approved ? 'approve' : 'reject');
-      console.log('API response:', response);
-
-      // Send real-time notification via Socket.io
-      respondToJoinRequest(
-        request.requester.id,
-        request.projectId,
-        approved,
-        { title: request.projectTitle }
+      await respondToJoinRequest(requestId, action, message);
+      
+      toast.success(
+        action === 'approve' 
+          ? 'Join request approved successfully!' 
+          : 'Join request declined'
       );
-
-      // Clear the request from local state
-      clearJoinRequest(request.requestId);
-
-      toast.success(`Request ${approved ? 'approved' : 'rejected'} successfully`);
     } catch (error) {
-      console.error('Error responding to request:', error);
-      toast.error(`Failed to respond to request: ${error.message}`);
+      console.error('Error responding to join request:', error);
+      toast.error(`Failed to ${action} request: ${error.message}`);
     } finally {
-      setProcessingRequests(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(request.requestId);
-        return newSet;
+      setIsLoading(prev => {
+        const newState = { ...prev };
+        delete newState[requestId];
+        return newState;
       });
     }
   };
 
-  const formatTimeAgo = (timestamp) => {
-    try {
-      const date = new Date(timestamp);
-      const now = new Date();
-      const diffInMinutes = Math.floor((now - date) / (1000 * 60));
-      
-      if (diffInMinutes < 1) return 'Just now';
-      if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-      if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-      return format(date, 'MMM d, h:mm a');
-    } catch (error) {
-      return 'Unknown time';
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'join_request':
+        return <Users className="h-4 w-4 text-blue-500" />;
+      case 'join_response':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'team_update':
+        return <Users className="h-4 w-4 text-purple-500" />;
+      default:
+        return <Bell className="h-4 w-4 text-gray-500" />;
     }
   };
 
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const totalNotifications = notifications.length + joinRequests.length;
+
   if (!isOpen) return null;
 
-  const hasJoinRequests = joinRequests.length > 0;
-  const hasNotifications = notifications.length > 0;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-end p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-xl max-h-[80vh] overflow-hidden">
-        <div className="p-4 border-b bg-gray-50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              <h3 className="text-lg font-semibold">Notifications</h3>
-            </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+    <div className="absolute right-0 top-16 w-96 bg-white border rounded-lg shadow-xl z-50 max-h-[500px] flex flex-col">
+      {/* Header */}
+      <div className="p-4 border-b">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Notifications</h3>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs">
+              {totalNotifications}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="h-8 w-8 p-0"
+            >
               <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
+        
+        {/* Tabs */}
+        <div className="flex mt-3 bg-gray-100 rounded-lg p-1">
+          <Button
+            variant={activeTab === 'all' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('all')}
+            className="flex-1 h-8 text-xs"
+          >
+            All ({totalNotifications})
+          </Button>
+          <Button
+            variant={activeTab === 'requests' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('requests')}
+            className="flex-1 h-8 text-xs"
+          >
+            Requests ({joinRequests.length})
+          </Button>
+        </div>
+      </div>
 
-        <div className="overflow-y-auto max-h-[calc(80vh-80px)]">
-          {/* Join Requests Section */}
-          {hasJoinRequests && (
-            <div className="p-4 border-b">
-              <h4 className="font-medium text-sm text-gray-600 mb-3 flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                Team Join Requests ({joinRequests.length})
-              </h4>
-              <div className="space-y-3">
-                {joinRequests.map((request) => (
-                  <Card key={request.requestId} className="border border-blue-200 bg-blue-50">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={request.requester.profileImage} />
-                          <AvatarFallback>
-                            {request.requester.fullName?.charAt(0) || 
-                             request.requester.username?.charAt(0) || '?'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-medium text-sm">
-                              {request.requester.fullName || request.requester.username}
-                            </p>
-                            <Badge variant="secondary" className="text-xs">
-                              {formatTimeAgo(request.timestamp)}
-                            </Badge>
+      {/* Content */}
+      <ScrollArea className="flex-1">
+        {!isAuthenticated ? (
+          <div className="p-4 text-center text-gray-500">
+            <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p>Connect to see notifications</p>
+          </div>
+        ) : (
+          <div className="p-4">
+            {/* Join Requests Section */}
+            {(activeTab === 'all' || activeTab === 'requests') && joinRequests.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-gray-700">Join Requests</h4>
+                  {activeTab === 'requests' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearAllJoinRequests}
+                      className="text-xs h-6 px-2"
+                    >
+                      Clear All
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="space-y-3">
+                  {joinRequests.map((request) => (
+                    <Card key={request.requestId} className="shadow-sm">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <Users className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-sm">
+                                {request.requester.fullName || request.requester.username}
+                              </CardTitle>
+                              <CardDescription className="text-xs">
+                                wants to join "{request.projectTitle}"
+                              </CardDescription>
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-600 mb-2">
-                            Wants to join "<span className="font-medium">{request.projectTitle}</span>"
-                          </p>
-                          {request.message && (
-                            <p className="text-sm text-gray-700 bg-white p-2 rounded border mb-3">
-                              "{request.message}"
-                            </p>
-                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => clearJoinRequest(request.requestId)}
+                            className="h-6 w-6 p-0"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent className="pt-0">
+                        {request.message && (
+                          <div className="mb-3 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                            "{request.message}"
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">
+                            <Clock className="h-3 w-3 inline mr-1" />
+                            {formatTimestamp(request.timestamp)}
+                          </span>
+                          
                           <div className="flex gap-2">
                             <Button
                               size="sm"
-                              onClick={() => handleRequestResponse(request, true)}
-                              disabled={processingRequests.has(request.requestId)}
-                              className="bg-green-600 hover:bg-green-700 text-white"
+                              variant="outline"
+                              onClick={() => handleJoinResponse(request.requestId, 'reject', 'Request declined')}
+                              disabled={isLoading[request.requestId]}
+                              className="h-7 px-3 text-xs"
                             >
-                              <Check className="h-3 w-3 mr-1" />
-                              Accept
+                              {isLoading[request.requestId] === 'reject' ? (
+                                <div className="h-3 w-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <>
+                                  <XCircle className="h-3 w-3 mr-1" />
+                                  Decline
+                                </>
+                              )}
                             </Button>
                             <Button
                               size="sm"
-                              variant="outline"
-                              onClick={() => handleRequestResponse(request, false)}
-                              disabled={processingRequests.has(request.requestId)}
-                              className="border-red-200 text-red-600 hover:bg-red-50"
+                              onClick={() => handleJoinResponse(request.requestId, 'approve', 'Welcome to the team!')}
+                              disabled={isLoading[request.requestId]}
+                              className="h-7 px-3 text-xs"
                             >
-                              <X className="h-3 w-3 mr-1" />
-                              Decline
+                              {isLoading[request.requestId] === 'approve' ? (
+                                <div className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Accept
+                                </>
+                              )}
                             </Button>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* General Notifications Section */}
-          {hasNotifications && (
-            <div className="p-4">
-              <h4 className="font-medium text-sm text-gray-600 mb-3 flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Recent Activity ({notifications.length})
-              </h4>
-              <div className="space-y-3">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className="p-3 bg-gray-50 rounded-lg border border-gray-200"
+            {/* General Notifications Section */}
+            {activeTab === 'all' && notifications.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-gray-700">Recent Activity</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllNotifications}
+                    className="text-xs h-6 px-2"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{notification.title}</p>
-                        <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                    Clear All
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  {notifications.slice(0, 10).map((notification) => (
+                    <div key={notification.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div className="mt-1">
+                        {getNotificationIcon(notification.type)}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">
-                          {formatTimeAgo(notification.timestamp)}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => clearNotification(notification.id)}
-                          className="h-6 w-6 p-0"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">
+                          {notification.title}
+                        </p>
+                        <p className="text-xs text-gray-600 line-clamp-2">
+                          {notification.message}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {formatTimestamp(notification.timestamp)}
+                        </p>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => clearNotification(notification.id)}
+                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Empty State */}
-          {!hasJoinRequests && !hasNotifications && (
-            <div className="p-8 text-center text-gray-500">
-              <Bell className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">No notifications yet</p>
-              <p className="text-xs mt-1">You'll see join requests and updates here</p>
-            </div>
-          )}
-        </div>
-      </div>
+            {/* Empty States */}
+            {((activeTab === 'all' && totalNotifications === 0) || 
+              (activeTab === 'requests' && joinRequests.length === 0)) && (
+              <div className="text-center py-8 text-gray-500">
+                <Bell className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm font-medium">No {activeTab === 'requests' ? 'join requests' : 'notifications'}</p>
+                <p className="text-xs mt-1">
+                  {activeTab === 'requests' 
+                    ? 'Join requests will appear here' 
+                    : 'All your notifications will appear here'
+                  }
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </ScrollArea>
     </div>
   );
 };

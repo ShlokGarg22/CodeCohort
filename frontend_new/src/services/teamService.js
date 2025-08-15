@@ -40,6 +40,16 @@ export const teamService = {
     }
   },
 
+  async cancelJoinRequest(requestId) {
+    try {
+      const response = await api.delete(`/teams/requests/${requestId}/cancel`);
+      return response.data;
+    } catch (error) {
+      console.error('Cancel join request error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to cancel join request');
+    }
+  },
+
   async getJoinRequests() {
     try {
       const response = await api.get('/teams/requests/creator');

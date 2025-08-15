@@ -3,18 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { 
   Code, 
   Trophy, 
   TrendingUp, 
   Users, 
-  Calendar, 
-  User, 
   ExternalLink,
   GitBranch,
   Clock,
-  Star
+  Star,
+  Home
 } from 'lucide-react';
 import { problemService } from '../services/problemService';
 import { teamService } from '../services/teamService';
@@ -22,62 +20,166 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import JoinTeamModal from './JoinTeamModal';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { sendJoinRequest, isConnected, isAuthenticated } = useSocket();
+  const { isConnected, socket } = useSocket();
   const [loading, setLoading] = useState(true);
-  const [availableProjects, setAvailableProjects] = useState([]);
   const [myProjects, setMyProjects] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [stats, setStats] = useState({
     problemsSolved: 0,
     currentStreak: 0,
     totalProjects: 0,
     averageRating: 0
   });
-  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
+  // Listen for join request responses to refresh dashboard
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleJoinResponse = (response) => {
+      console.log('🔄 Join response received in UserDashboard:', response);
+      if (response.approved) {
+        console.log('✅ Join request approved, refreshing dashboard data...');
+        toast.success(`You've been added to "${response.projectTitle}"! Refreshing dashboard...`);
+        
+        // Multiple refresh attempts to ensure data is loaded
+        // First refresh after 1 second
+        setTimeout(() => {
+          console.log('🔄 First dashboard refresh after join approval...');
+          fetchDashboardData();
+        }, 1000);
+        
+        // Second refresh after 3 seconds as backup
+        setTimeout(() => {
+          console.log('🔄 Second dashboard refresh after join approval...');
+          fetchDashboardData();
+        }, 3000);
+      } else {
+        toast.info(`Your request to join "${response.projectTitle}" was declined.`);
+      }
+    };
+
+    // Also listen for team member joined events
+    const handleTeamMemberJoined = (data) => {
+      console.log('👥 Team member joined event:', data);
+      if (data.newMember && data.newMember.id === user?._id) {
+        console.log('✅ I was added to a team, refreshing dashboard...');
+        fetchDashboardData();
+      }
+    };
+
+    socket.on('join_request_response', handleJoinResponse);
+    socket.on('team_member_joined', handleTeamMemberJoined);
+
+    return () => {
+      socket.off('join_request_response', handleJoinResponse);
+      socket.off('team_member_joined', handleTeamMemberJoined);
+    };
+  }, [socket, user?._id]);
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
       
-      // Fetch available projects
-      const availableResult = await problemService.getAvailableProblems();
-      if (availableResult.success) {
-        setAvailableProjects(availableResult.data.problems);
-      }
+      console.log('📊 Fetching dashboard data...');
+      console.log('👤 Current user:', user);
 
+      // Fetch pending requests
+      const pendingResult = await teamService.getPendingRequests();
+      console.log('Pending requests result:', pendingResult);
+      if (pendingResult.success) {
+        const pendingArray = Array.isArray(pendingResult.data) ? pendingResult.data : [];
+        setPendingRequests(pendingArray);
+        console.log('✅ Pending requests set:', pendingArray.length);
+      } else {
+        console.error('Failed to fetch pending requests:', pendingResult.message);
+      }
+      
       // Fetch user's joined projects
+      console.log('🔍 Fetching joined projects...');
       const myProjectsResult = await problemService.getMyJoinedProblems();
+      console.log('My projects result:', myProjectsResult);
+      
+      let myProjectsArray = [];
       if (myProjectsResult.success) {
-        setMyProjects(myProjectsResult.data.problems);
+        const joinedProjects = myProjectsResult.data?.problems || [];
+        console.log('joinedProjects extracted:', joinedProjects);
+        console.log('joinedProjects type:', typeof joinedProjects);
+        console.log('joinedProjects is array:', Array.isArray(joinedProjects));
+        console.log('joinedProjects length:', joinedProjects?.length);
+        
+        // Ensure we always set an array and normalize _id/string ids
+        myProjectsArray = Array.isArray(joinedProjects) ? joinedProjects : [];
+        myProjectsArray = myProjectsArray.map(p => ({
+          // normalize id to _id if backend sometimes returns id
+          _id: p._id || p.id || (typeof p === 'string' ? p : undefined),
+          title: p.title,
+          description: p.description,
+          status: p.status,
+          teamMembers: p.teamMembers || [],
+          maxTeamSize: p.maxTeamSize,
+          createdAt: p.createdAt || p.createdAtDate || new Date().toISOString(),
+          rating: p.rating
+        }));
+        setMyProjects(myProjectsArray);
+        console.log('✅ My projects set:', myProjectsArray.length, 'projects');
+        
+        // Calculate stats based on actual data
+        if (Array.isArray(myProjectsArray)) {
+          const problemsSolved = myProjectsArray.filter(p => p.status === 'completed').length;
+          const currentStreak = Math.floor(Math.random() * 7) + 1; // Mock data for now
+          const totalProjects = myProjectsArray.length;
+          const averageRating = myProjectsArray.length > 0 
+            ? (myProjectsArray.reduce((sum, p) => sum + (p.rating || 4), 0) / myProjectsArray.length).toFixed(1)
+            : 0;
+
+          setStats({
+            problemsSolved,
+            currentStreak,
+            totalProjects,
+            averageRating: parseFloat(averageRating)
+          });
+        } else {
+          setStats({
+            problemsSolved: 0,
+            currentStreak: 0,
+            totalProjects: 0,
+            averageRating: 0
+          });
+        }
+      } else {
+        console.error('Failed to fetch joined projects:', myProjectsResult.message);
+        toast.error('Failed to load your projects');
+        setMyProjects([]);
+        setStats({
+          problemsSolved: 0,
+          currentStreak: 0,
+          totalProjects: 0,
+          averageRating: 0
+        });
       }
-
-      // Calculate stats
-      const problemsSolved = myProjects.filter(p => p.status === 'solved').length;
-      const currentStreak = Math.floor(Math.random() * 7) + 1; // Mock data
-      const totalProjects = myProjects.length;
-      const averageRating = myProjects.length > 0 
-        ? (myProjects.reduce((sum, p) => sum + (p.rating || 0), 0) / myProjects.length).toFixed(1)
-        : 0;
-
-      setStats({
-        problemsSolved,
-        currentStreak,
-        totalProjects,
-        averageRating
-      });
+      
+      console.log('✅ Dashboard data loaded successfully');
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      toast.error('Failed to load dashboard data');
+      toast.error(`Failed to load dashboard: ${error.message || 'Unknown error'}`);
+      
+      // Set default values so dashboard still shows
+      setMyProjects([]);
+      setStats({
+        problemsSolved: 0,
+        currentStreak: 0,
+        totalProjects: 0,
+        averageRating: 0
+      });
     } finally {
       setLoading(false);
     }
@@ -92,63 +194,30 @@ const UserDashboard = () => {
     }
   };
 
-  const handleJoinProject = (project) => {
-    // Check if user can join more projects (max 3)
-    if (myProjects.length >= 3) {
-      toast.error('You can only join a maximum of 3 projects');
-      return;
-    }
-    
-    setSelectedProject(project);
-    setIsJoinModalOpen(true);
-  };
-
-  const handleJoinSubmit = async (projectId, message) => {
-    try {
-      // First, try to send via API (primary method)
-      try {
-        await teamService.requestToJoinTeam(projectId, message);
-        toast.success('Join request sent successfully! The creator will review your request.');
-      } catch (apiError) {
-        console.log('API request failed, trying Socket.IO fallback:', apiError.message);
-        
-        // Fallback to Socket.IO if API fails
-        if (isConnected && isAuthenticated && selectedProject) {
-          const requesterData = {
-            id: user._id,
-            username: user.username,
-            fullName: user.fullName,
-            profileImage: user.profileImage,
-            projectTitle: selectedProject.title
-          };
-
-          sendJoinRequest(
-            projectId,
-            selectedProject.createdBy,
-            requesterData,
-            message
-          );
-          
-          toast.success('Join request sent via real-time connection! The creator will review your request.');
-        } else {
-          throw new Error('Both API and Socket.IO connections are unavailable');
-        }
-      }
-      
-      // Remove project from available list
-      setAvailableProjects(prev => prev.filter(p => p._id !== projectId));
-    } catch (error) {
-      console.error('Error sending join request:', error);
-      toast.error(error.message || 'Failed to send join request');
-    }
-  };
 
   const handleGoToProject = (projectId) => {
+    if (!projectId) {
+      toast.error('Project id missing');
+      return;
+    }
     navigate(`/project/${projectId}`);
   };
 
   const handleViewVersionHistory = (projectId) => {
     navigate(`/project/${projectId}/version-history`);
+  };
+
+  const handleCancelRequest = async (requestId) => {
+    try {
+      await teamService.cancelJoinRequest(requestId);
+      toast.success('Join request cancelled successfully');
+      
+      // Remove from pending requests
+      setPendingRequests(prev => prev.filter(req => req._id !== requestId));
+    } catch (error) {
+      console.error('Error canceling request:', error);
+      toast.error(error.message || 'Failed to cancel request');
+    }
   };
 
   if (loading) {
@@ -192,10 +261,19 @@ const UserDashboard = () => {
               <Badge variant="outline" className="mb-2">Coding Enthusiast</Badge>
               <p className="text-sm text-gray-600">Keep practicing to unlock new achievements!</p>
             </div>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Code className="h-4 w-4 mr-2" />
-              Start Coding
-            </Button>
+            <div className="flex space-x-2">
+              <Button 
+                onClick={fetchDashboardData}
+                variant="outline"
+                size="sm"
+              >
+                🔄 Refresh
+              </Button>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Code className="h-4 w-4 mr-2" />
+                Start Coding
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -247,6 +325,51 @@ const UserDashboard = () => {
         </Card>
       </div>
 
+      {/* Pending Requests Section */}
+      {pendingRequests.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Clock className="h-5 w-5 mr-2" />
+              Pending Join Requests
+            </CardTitle>
+            <CardDescription>
+              Requests you've sent that are awaiting approval
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {pendingRequests.map((request) => (
+                <div key={request._id} className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-900">{request.project?.title}</h4>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Request sent to {request.creator?.fullName || request.creator?.username}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(request.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
+                      Pending
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCancelRequest(request._id)}
+                      className="text-red-600 hover:text-red-700 hover:border-red-300"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* My Projects Section */}
       <Card>
         <CardHeader>
@@ -262,15 +385,16 @@ const UserDashboard = () => {
               <h3 className="text-lg font-medium text-gray-900 mb-2">No projects yet</h3>
               <p className="text-gray-500 mb-4">Join a project to start collaborating with other developers</p>
               <Button 
-                onClick={() => document.getElementById('available-projects')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={() => navigate('/')}
                 className="bg-blue-600 hover:bg-blue-700"
               >
+                <Home className="h-4 w-4 mr-2" />
                 Browse Available Projects
               </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {myProjects.map((project) => (
+              {Array.isArray(myProjects) && myProjects.map((project) => (
                 <Card key={project._id} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
@@ -330,102 +454,6 @@ const UserDashboard = () => {
           )}
         </CardContent>
       </Card>
-
-      {/* Available Projects Section */}
-      <Card id="available-projects">
-        <CardHeader>
-          <CardTitle>Available Projects</CardTitle>
-          <CardDescription>
-            Join exciting projects and collaborate with other developers
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {availableProjects.length === 0 ? (
-            <div className="text-center py-8">
-              <Code className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No available projects</h3>
-              <p className="text-gray-500">Check back later for new opportunities</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {availableProjects.map((project) => (
-                <Card key={project._id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{project.title}</CardTitle>
-                        <CardDescription className="line-clamp-2">
-                          {project.description}
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Creator:</span>
-                        <div className="flex items-center space-x-2">
-                          <Avatar className="h-6 w-6">
-                            <AvatarImage src={project.createdBy?.profileImage} />
-                            <AvatarFallback>
-                              {project.createdBy?.username?.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">{project.createdBy?.username}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Team Size:</span>
-                        <span className="font-medium">
-                          {project.teamMembers?.length || 0}/{project.maxTeamSize || 5}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Created:</span>
-                        <span className="font-medium">
-                          {format(new Date(project.createdAt), 'MMM dd, yyyy')}
-                        </span>
-                      </div>
-
-                      <div className="flex space-x-2 pt-2">
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleJoinProject(project)}
-                          className="flex-1 bg-green-600 hover:bg-green-700"
-                          disabled={myProjects.length >= 3}
-                        >
-                          <User className="h-3 w-3 mr-1" />
-                          Join Team
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleGoToProject(project._id)}
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Join Team Modal */}
-      <JoinTeamModal
-        isOpen={isJoinModalOpen}
-        onClose={() => {
-          setIsJoinModalOpen(false);
-          setSelectedProject(null);
-        }}
-        onSubmit={handleJoinSubmit}
-        project={selectedProject}
-      />
     </div>
   );
 };
