@@ -441,9 +441,9 @@ const setupJoinNotificationHandlers = (io) => {
     } catch {}
 
     // Chat: send message
-    socket.on('message:send', async (data, cb) => {
+  socket.on('message:send', async (data, cb) => {
       try {
-        const { projectId, content, mentions = [] } = data || {};
+    const { projectId, content, mentions = [], imageUrl = null, imagePublicId = null } = data || {};
         const userId = socket.userId;
         if (!userId) return cb && cb({ success: false, message: 'Not authenticated' });
 
@@ -454,15 +454,15 @@ const setupJoinNotificationHandlers = (io) => {
 
         // Basic sanitize on server side
         const sanitize = (s) => (typeof s === 'string' ? s.replace(/[\u0000-\u001F\u007F]/g, '').trim() : '');
-        const clean = sanitize(content);
-        if (!clean) return cb && cb({ success: false, message: 'Empty message' });
+  const clean = sanitize(content);
+  if (!clean && !imageUrl) return cb && cb({ success: false, message: 'Empty message' });
 
-        const msg = await Message.create({ project: projectId, sender: userId, content: clean, mentions });
+  const msg = await Message.create({ project: projectId, sender: userId, content: clean, mentions, imageUrl, imagePublicId });
         const populated = await msg.populate('sender', 'username fullName profileImage');
 
         const payload = { type: 'message', projectId, message: populated };
         const room = `project_${projectId}`;
-        io.to(room).emit('message:new', payload);
+  io.to(room).emit('message:new', payload);
 
         // Notify mentioned users in their user rooms
         if (Array.isArray(mentions) && mentions.length) {

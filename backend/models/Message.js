@@ -3,7 +3,9 @@ const mongoose = require('mongoose');
 const MessageSchema = new mongoose.Schema({
   project: { type: mongoose.Schema.Types.ObjectId, ref: 'Problem', index: true, required: true },
   sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  content: { type: String, required: true },
+  content: { type: String, default: '' },
+  imageUrl: { type: String, default: null },
+  imagePublicId: { type: String, default: null },
   mentions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   edited: { type: Boolean, default: false },
   deletedAt: { type: Date, default: null }

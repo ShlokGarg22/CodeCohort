@@ -37,6 +37,19 @@ export const chatService = {
     return res.data?.data ?? res.data;
   },
 
+  async sendImageMessage(projectId, file, { content = '', mentions = [] } = {}) {
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('content', content);
+    formData.append('mentions', JSON.stringify(mentions));
+    const res = await api.post(`/chat/${projectId}/messages/image`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data?.data ?? res.data;
+  },
+
   async editMessage(projectId, messageId, content) {
     const res = await api.put(`/chat/${projectId}/messages/${messageId}`, { content });
     return res.data?.data ?? res.data;
