@@ -19,6 +19,102 @@ const ProjectChat = ({ projectId }) => {
   const typingTimeoutRef = useRef(null);
   const syncTimerRef = useRef(null);
 
+  // --- AI content rendering helpers ---
+  const renderBold = (text) => {
+    const parts = [];
+    const regex = /\*\*([^*]+)\*\*/g;
+    let lastIndex = 0;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
+      parts.push(<strong key={`b-${match.index}`} className="font-semibold">{match[1]}</strong>);
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+    return parts.length ? parts : [text];
+  };
+
+  const renderInline = (text) => {
+    const out = [];
+    const linkRe = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+    let last = 0;
+    let m;
+    while ((m = linkRe.exec(text)) !== null) {
+      if (m.index > last) {
+        const chunk = text.slice(last, m.index);
+        out.push(...renderBold(chunk));
+      }
+      const label = m[1];
+      const href = m[2];
+      out.push(
+        <a
+          key={`lnk-${m.index}`}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline hover:text-blue-700 break-words"
+        >
+          {label}
+        </a>
+      );
+      last = linkRe.lastIndex;
+    }
+    if (last < text.length) out.push(...renderBold(text.slice(last)));
+    return out.length ? out : [text];
+  };
+
+  const renderAiContent = (content) => {
+    if (!content) return null;
+    const lines = String(content).split(/\r?\n/);
+    const blocks = [];
+    let listItems = [];
+    const flushList = () => {
+      if (listItems.length) {
+        blocks.push(
+          <ul key={`ul-${blocks.length}`} className="list-disc pl-5 my-1 space-y-1">
+            {listItems.map((t, i) => (
+              <li key={`li-${i}`} className="leading-6">{renderInline(t)}</li>
+            ))}
+          </ul>
+        );
+        listItems = [];
+      }
+    };
+    lines.forEach((raw, idx) => {
+      const line = raw.trimEnd();
+      if (!line.trim()) { // blank line -> paragraph break
+        flushList();
+        blocks.push(<div key={`sp-${idx}`} className="h-2" />);
+        return;
+      }
+      const mHead = line.match(/^(#{1,6})\s+(.+)$/);
+      if (mHead) {
+        flushList();
+        const level = mHead[1].length;
+        const txt = mHead[2];
+        const size = level <= 2 ? 'text-[15px]' : 'text-[14px]';
+        blocks.push(
+          <div key={`h-${idx}`} className={`font-semibold ${size} mt-1 mb-1`}>{renderInline(txt)}</div>
+        );
+        return;
+      }
+      const mList = line.match(/^[-*]\s+(.+)$/);
+      if (mList) {
+        listItems.push(mList[1]);
+        return;
+      }
+      // normal paragraph
+      flushList();
+      blocks.push(
+        <p key={`p-${idx}`} className="leading-6">
+          {renderInline(line)}
+        </p>
+      );
+    });
+    flushList();
+    return <div className="space-y-1">{blocks}</div>;
+  };
+
   const syncMessages = async () => {
     try {
       const latest = await chatService.getMessages(projectId, { limit: 200 });
@@ -151,6 +247,43 @@ const ProjectChat = ({ projectId }) => {
     }
     // Otherwise send text-only message
     if (!content) return;
+    // If AI command
+    if (content.toLowerCase().startsWith('@ai ')) {
+      const prompt = content.slice(4).trim();
+      if (!prompt) { setInput(''); return; }
+      try {
+        // First, post the user's question as a normal message (without the @ai prefix)
+        if (socket && isAuthenticated) {
+          socket.emit('message:send', { projectId, content: prompt, mentions: [] });
+        } else {
+          await chatService.sendMessage(projectId, prompt);
+        }
+        // Optimistic "assistant is thinking" placeholder (not persisted)
+        const tempId = `temp-ai-${Date.now()}`;
+        setMessages((prev) => [...prev, {
+          _id: tempId,
+          sender: { _id: 'ai', username: 'AI', fullName: 'AI Assistant', profileImage: '' },
+          content: 'Thinking…',
+          createdAt: new Date().toISOString(),
+        }]);
+        setInput('');
+        const aiText = await chatService.aiPrompt(projectId, prompt, { maxTokens: 4096 });
+        // Send as a real message from the requester so it persists for everyone, labeled content with prefix "AI:" on server
+        const finalContent = aiText || 'No response';
+        if (socket && isAuthenticated) {
+          socket.emit('message:send', { projectId, content: `AI: ${finalContent}`, mentions: [] });
+        } else {
+          await chatService.sendMessage(projectId, `AI: ${finalContent}`);
+        }
+        // Remove placeholder; actual message will arrive via socket/rest response handlers
+        setMessages((prev) => prev.filter(m => m._id !== tempId));
+        scrollToBottom();
+      } catch (e) {
+        // Replace placeholder with error
+        setMessages((prev) => prev.map(m => m._id?.startsWith('temp-ai-') ? { ...m, content: 'AI error. Try again later.' } : m));
+      }
+      return;
+    }
     try {
       if (socket && isAuthenticated) {
         socket.emit('message:send', { projectId, content, mentions: [] });
@@ -222,25 +355,29 @@ const ProjectChat = ({ projectId }) => {
         {messages.map((m) => {
           const senderId = (m.sender && (m.sender._id || m.sender.id)) || m.sender;
           const currentUserId = user?._id || user?.id;
-          const mine = senderId && currentUserId && String(senderId) === String(currentUserId);
+          const isAi = String(senderId) === 'ai' || (typeof m.content === 'string' && m.content.startsWith('AI: '));
+          const mine = !isAi && senderId && currentUserId && String(senderId) === String(currentUserId);
+          const contentToShow = isAi && typeof m.content === 'string' ? m.content.replace(/^AI:\s*/,'') : m.content;
           return (
             <div key={m._id} className={`flex items-start gap-2 ${mine ? 'justify-end' : 'justify-start'}`}>
               {!mine && (
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={m.sender?.profileImage} />
-                  <AvatarFallback>{(m.sender?.fullName || m.sender?.username || 'U').charAt(0).toUpperCase()}</AvatarFallback>
+          <AvatarImage src={isAi ? '' : m.sender?.profileImage} />
+          <AvatarFallback>{isAi ? 'AI' : (m.sender?.fullName || m.sender?.username || 'U').charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
               )}
-              <div className={`${mine ? 'bg-blue-600 text-white' : 'bg-white text-gray-900'} border rounded-md p-2 max-w-[80%]`}>
+              <div className={`${mine ? 'bg-blue-600 text-white' : (isAi ? 'bg-violet-50 text-gray-900' : 'bg-white text-gray-900')} border rounded-md p-3 max-w-[80%]`}>
                 <div className={`text-xs font-medium ${mine ? 'text-blue-100' : 'text-gray-600'}`}>
-                  {mine ? 'You' : (m.sender?.fullName || m.sender?.username || 'User')}
+          {mine ? 'You' : (isAi ? 'AI Assistant' : (m.sender?.fullName || m.sender?.username || 'User'))}
                   {m.edited && <span className={`ml-1 text-[10px] ${mine ? 'text-blue-200' : 'text-gray-400'}`}>(edited)</span>}
                 </div>
                 {m.imageUrl && (
                   <img src={m.imageUrl} alt="attachment" className="rounded-md max-h-60 w-auto mb-1" />
                 )}
-                {m.content && (
-                  <div className={`text-sm whitespace-pre-wrap break-words ${mine ? 'text-white' : 'text-gray-900'}`}>{m.content}</div>
+                {contentToShow && (
+                  isAi
+                    ? <div className="text-sm prose prose-sm max-w-none [&_a]:break-words">{renderAiContent(contentToShow)}</div>
+                    : <div className={`text-sm whitespace-pre-wrap break-words ${mine ? 'text-white' : 'text-gray-900'}`}>{contentToShow}</div>
                 )}
               </div>
               {mine && (

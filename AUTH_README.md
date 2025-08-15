@@ -198,6 +198,16 @@ Content-Type: application/json
 - Protected routes redirect to signin when not authenticated
 
 ### Authentication Flow
+
+## 🤖 AI Chat (@ai) Setup
+
+Backend expects an environment variable `GOOGLE_AI_KEY` (or `GEMINI_API_KEY`) in `backend/.env`.
+
+Endpoints:
+- POST `/api/v1/ai/:projectId/prompt` body: `{ "prompt": "..." }` (requires auth and project membership)
+- GET `/api/v1/ai/health` to check availability
+
+In chat, typing messages starting with `@ai ` triggers the backend, then the AI result is posted back into the chat as an `AI:` message so all members see it.
 1. User signs up or signs in
 2. JWT token stored in localStorage
 3. Token included in API requests

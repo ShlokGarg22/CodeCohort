@@ -59,6 +59,14 @@ export const chatService = {
     const res = await api.delete(`/chat/${projectId}/messages/${messageId}`);
     return res.data?.data ?? res.data;
   },
+
+  async aiPrompt(projectId, prompt, opts = {}) {
+    const { maxTokens = 4096 } = opts;
+    const res = await api.post(`/ai/${projectId}/prompt`, { prompt, maxTokens });
+    // { success, data: { text } }
+    const payload = res.data?.data ?? res.data;
+    return payload?.text || '';
+  },
 };
 
 export default chatService;
