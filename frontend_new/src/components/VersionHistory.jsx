@@ -13,6 +13,20 @@ import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer, 
+  BarChart, 
+  Bar, 
+  Area, 
+  AreaChart 
+} from 'recharts';
+import { 
   ArrowLeft, 
   GitBranch, 
   Clock, 
@@ -741,6 +755,20 @@ const AnalyticsSection = ({ codeFrequency, contributorsData, commits }) => {
   const maxAdditions = Math.max(...codeFrequency.map(week => week.additions || 0));
   const maxDeletions = Math.max(...codeFrequency.map(week => week.deletions || 0));
   const maxChanges = Math.max(maxAdditions, maxDeletions);
+  
+  // Format code frequency data for the chart
+  const chartData = codeFrequency.slice(0, 12).map(week => {
+    const weekDate = new Date(week.week);
+    return {
+      name: weekDate.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+      }),
+      additions: week.additions || 0,
+      deletions: week.deletions || 0,
+      net: (week.additions || 0) - (week.deletions || 0)
+    };
+  }).reverse();
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -753,74 +781,97 @@ const AnalyticsSection = ({ codeFrequency, contributorsData, commits }) => {
           <p className="text-sm text-gray-600">Weekly additions and deletions over time</p>
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
-            {codeFrequency.slice(0, 12).map((week, index) => {
-              const weekDate = new Date(week.week * 1000);
-              const additionsPercent = maxChanges > 0 ? (week.additions / maxChanges) * 100 : 0;
-              const deletionsPercent = maxChanges > 0 ? (week.deletions / maxChanges) * 100 : 0;
-              const netChanges = (week.additions || 0) - (week.deletions || 0);
+          {codeFrequency.length > 0 ? (
+            <div className="space-y-6">
+              {/* Chart Visualization */}
+              <div className="w-full h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={chartData}
+                    margin={{
+                      top: 10,
+                      right: 30,
+                      left: 0,
+                      bottom: 0,
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}
+                      formatter={(value, name) => [value, name === 'additions' ? 'Additions' : name === 'deletions' ? 'Deletions' : 'Net Change']}
+                      labelFormatter={(label) => `Week of ${label}`}
+                    />
+                    <Legend formatter={(value) => value === 'additions' ? 'Additions' : value === 'deletions' ? 'Deletions' : 'Net Change'} />
+                    <Area type="monotone" dataKey="additions" stroke="#10B981" fillOpacity={0.5} fill="#DCFCE7" activeDot={{ r: 6 }} strokeWidth={2} />
+                    <Area type="monotone" dataKey="deletions" stroke="#EF4444" fillOpacity={0.5} fill="#FEE2E2" activeDot={{ r: 6 }} strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
               
-              return (
-                <div key={index} className="group space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">
-                      {weekDate.toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric',
-                        year: weekDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-                      })}
-                    </span>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className={`px-2 py-1 rounded-full ${
-                        netChanges > 0 ? 'bg-green-100 text-green-700' : 
-                        netChanges < 0 ? 'bg-red-100 text-red-700' : 
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {netChanges > 0 ? '+' : ''}{netChanges}
+              {/* Traditional Bar Visualization Below the Chart */}
+              {chartData.map((week, index) => {
+                const additionsPercent = maxChanges > 0 ? (week.additions / maxChanges) * 100 : 0;
+                const deletionsPercent = maxChanges > 0 ? (week.deletions / maxChanges) * 100 : 0;
+                const netChanges = week.net;
+                
+                return (
+                  <div key={index} className="group space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">
+                        {week.name}
                       </span>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    {/* Additions Bar */}
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-green-600 w-8">+{week.additions || 0}</span>
-                      <div className="flex-1 bg-green-50 rounded-full h-3 relative overflow-hidden">
-                        <div 
-                          className="bg-gradient-to-r from-green-400 to-green-500 h-full transition-all duration-1000 ease-out rounded-full shadow-sm group-hover:shadow-md"
-                          style={{ 
-                            width: `${additionsPercent}%`,
-                            animationDelay: `${index * 100}ms`
-                          }}
-                        ></div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className={`px-2 py-1 rounded-full ${
+                          netChanges > 0 ? 'bg-green-100 text-green-700' : 
+                          netChanges < 0 ? 'bg-red-100 text-red-700' : 
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {netChanges > 0 ? '+' : ''}{netChanges}
+                        </span>
                       </div>
                     </div>
                     
-                    {/* Deletions Bar */}
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-red-600 w-8">-{week.deletions || 0}</span>
-                      <div className="flex-1 bg-red-50 rounded-full h-3 relative overflow-hidden">
-                        <div 
-                          className="bg-gradient-to-r from-red-400 to-red-500 h-full transition-all duration-1000 ease-out rounded-full shadow-sm group-hover:shadow-md"
-                          style={{ 
-                            width: `${deletionsPercent}%`,
-                            animationDelay: `${index * 100 + 50}ms`
-                          }}
-                        ></div>
+                    <div className="space-y-1">
+                      {/* Additions Bar */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-green-600 w-8">+{week.additions}</span>
+                        <div className="flex-1 bg-green-50 rounded-full h-3 relative overflow-hidden">
+                          <div 
+                            className="bg-gradient-to-r from-green-400 to-green-500 h-full transition-all duration-1000 ease-out rounded-full shadow-sm group-hover:shadow-md"
+                            style={{ 
+                              width: `${additionsPercent}%`,
+                              animationDelay: `${index * 100}ms`
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      {/* Deletions Bar */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-red-600 w-8">-{week.deletions}</span>
+                        <div className="flex-1 bg-red-50 rounded-full h-3 relative overflow-hidden">
+                          <div 
+                            className="bg-gradient-to-r from-red-400 to-red-500 h-full transition-all duration-1000 ease-out rounded-full shadow-sm group-hover:shadow-md"
+                            style={{ 
+                              width: `${deletionsPercent}%`,
+                              animationDelay: `${index * 100 + 50}ms`
+                            }}
+                          ></div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-            
-            {codeFrequency.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>No code activity data available</p>
-              </div>
-            )}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>No code activity data available</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
