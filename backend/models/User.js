@@ -79,6 +79,22 @@ const userSchema = new mongoose.Schema({
   approvedAt: {
     type: Date
   },
+  status: {
+    type: String,
+    enum: ['active', 'banned', 'suspended'],
+    default: 'active'
+  },
+  bannedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  bannedAt: {
+    type: Date
+  },
+  lastActive: {
+    type: Date,
+    default: Date.now
+  },
   joinedProjects: [{
     project: {
       type: mongoose.Schema.Types.ObjectId,

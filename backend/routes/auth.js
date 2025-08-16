@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const passport = require('passport');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const {
   signup,
   signin,
@@ -35,8 +35,8 @@ router.put('/change-password', changePassword);
 router.post('/logout', logout);
 
 // Admin routes
-router.get('/admin/pending-creators', getPendingCreators);
-router.put('/admin/creator-status', updateCreatorStatus);
-router.get('/admin/users', getAllUsers);
+router.get('/admin/pending-creators', requireAdmin, getPendingCreators);
+router.put('/admin/creator-status', requireAdmin, updateCreatorStatus);
+router.get('/admin/users', requireAdmin, getAllUsers);
 
 module.exports = router;

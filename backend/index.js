@@ -16,6 +16,7 @@ const teamRouter = require('./routes/teams');
 const uploadRouter = require('./routes/upload');
 const chatRouter = require('./routes/chat');
 const aiRouter = require('./routes/ai');
+const adminRouter = require('./routes/admin');
 
 // Force reliable public DNS resolvers to avoid local/ISP DNS issues with SRV/TXT lookups
 // This helps resolve errors like: queryTxt ESERVFAIL cluster0.x.mongodb.net
@@ -82,6 +83,7 @@ app.use("/api/v1", taskRouter);
 app.use("/api/v1/teams", teamRouter);
 app.use("/api/v1/chat", chatRouter);
 app.use("/api/v1/ai", aiRouter);
+app.use("/api/v1/admin", adminRouter);
 
 // Health check route
 app.get('/api/v1/health', (req, res) => {
