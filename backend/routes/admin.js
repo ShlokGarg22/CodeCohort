@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { 
+  rateLimits, 
+  sanitizeInput, 
+  handleValidationErrors 
+} = require('../middleware/security');
+const { body, param, query } = require('express-validator');
 const User = require('../models/User');
 const Problem = require('../models/Problem');
 const Message = require('../models/Message');
@@ -9,6 +15,48 @@ const TeamRequest = require('../models/TeamRequest');
 // Apply auth middleware to all admin routes
 router.use(authenticateToken);
 router.use(requireAdmin);
+router.use(rateLimits.general);
+router.use(sanitizeInput);
+
+// Admin validation rules
+const roleUpdateValidation = [
+  param('id').isMongoId().withMessage('Invalid user ID'),
+  body('role').isIn(['user', 'creator', 'admin']).withMessage('Invalid role specified')
+];
+
+const banUserValidation = [
+  param('id').isMongoId().withMessage('Invalid user ID'),
+  body('reason')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('Ban reason must not exceed 500 characters')
+];
+
+const problemApprovalValidation = [
+  param('id').isMongoId().withMessage('Invalid problem ID'),
+  body('notes')
+    .optional()
+    .isLength({ max: 1000 })
+    .withMessage('Approval notes must not exceed 1000 characters')
+];
+
+const exportValidation = [
+  query('type')
+    .isIn(['users', 'problems', 'analytics'])
+    .withMessage('Export type must be users, problems, or analytics')
+];
+
+const projectEndValidation = [
+  param('id').isMongoId().withMessage('Invalid problem ID'),
+  body('reason')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('End reason must not exceed 500 characters'),
+  body('status')
+    .optional()
+    .isIn(['completed', 'cancelled', 'ended'])
+    .withMessage('Status must be completed, cancelled, or ended')
+];
 
 // Admin metrics
 router.get('/metrics', async (req, res) => {
@@ -84,7 +132,7 @@ router.get('/problems', async (req, res) => {
 });
 
 // Approve problem
-router.patch('/problems/:id/approve', async (req, res) => {
+router.patch('/problems/:id/approve', problemApprovalValidation, handleValidationErrors, async (req, res) => {
   try {
     const problem = await Problem.findByIdAndUpdate(
       req.params.id, 
@@ -119,7 +167,7 @@ router.patch('/problems/:id/approve', async (req, res) => {
 });
 
 // Update user role
-router.patch('/users/:id/role', async (req, res) => {
+router.patch('/users/:id/role', roleUpdateValidation, handleValidationErrors, async (req, res) => {
   try {
     const { role } = req.body;
     
@@ -162,7 +210,7 @@ router.patch('/users/:id/role', async (req, res) => {
 });
 
 // Ban user
-router.patch('/users/:id/ban', async (req, res) => {
+router.patch('/users/:id/ban', banUserValidation, handleValidationErrors, async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(
       req.params.id,
@@ -312,7 +360,7 @@ router.get('/team-requests', async (req, res) => {
 });
 
 // Export data (enhanced version with multiple formats)
-router.get('/export', async (req, res) => {
+router.get('/export', exportValidation, handleValidationErrors, async (req, res) => {
   try {
     const { type } = req.query;
     
@@ -515,7 +563,7 @@ router.get('/export', async (req, res) => {
 // Admin Project Management
 
 // End project (admin only)
-router.put('/problems/:id/end', async (req, res) => {
+router.put('/problems/:id/end', projectEndValidation, handleValidationErrors, async (req, res) => {
   try {
     const { id } = req.params;
     const { reason, status = 'ended' } = req.body;
@@ -597,7 +645,7 @@ router.put('/problems/:id/end', async (req, res) => {
 });
 
 // Delete project permanently (admin only)
-router.delete('/problems/:id', async (req, res) => {
+router.delete('/problems/:id', [param('id').isMongoId().withMessage('Invalid problem ID')], handleValidationErrors, async (req, res) => {
   try {
     const { id } = req.params;
 

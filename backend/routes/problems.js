@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
+const { validationRules, handleValidationErrors } = require('../middleware/security');
+const { body } = require('express-validator');
 const {
   createProblem,
   getProblems,
@@ -26,14 +28,17 @@ router.use(authenticateToken); // Apply auth middleware to all routes below
 router.get('/joined', getJoinedProblems); // Get problems user has joined
 router.get('/my/problems', getMyProblems); // Get my problems (creators only)
 
-// Parameterized routes come after specific routes
+// Parameterized routes come after specific routes with validation
 router.get('/:id', getProblemById); // Get problem by ID (authenticated)
-router.post('/', createProblem); // Create new problem (creators only)
-router.put('/:id', updateProblem); // Update problem (creator/admin only)
+router.post('/', validationRules.problemValidation, handleValidationErrors, createProblem); // Create new problem (creators only)
+router.put('/:id', validationRules.problemValidation, handleValidationErrors, updateProblem); // Update problem (creator/admin only)
 router.delete('/:id', deleteProblem); // Delete problem (creator/admin only)
 
-// GitHub repository routes
-router.put('/:projectId/github-repository', updateGitHubRepository); // Update GitHub repository
+// GitHub repository routes with validation
+router.put('/:projectId/github-repository', [
+  body('repositoryUrl').isURL().withMessage('Invalid repository URL'),
+  body('repositoryName').isLength({ min: 1, max: 100 }).withMessage('Repository name must be 1-100 characters')
+], handleValidationErrors, updateGitHubRepository); // Update GitHub repository
 router.get('/:projectId/github-repository', getGitHubRepository); // Get GitHub repository
 router.put('/:projectId/github-repository/lock', lockGitHubRepository); // Lock GitHub repository
 router.put('/:projectId/github-repository/unlock', unlockGitHubRepository); // Unlock GitHub repository
