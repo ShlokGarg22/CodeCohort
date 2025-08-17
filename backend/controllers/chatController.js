@@ -2,6 +2,7 @@ const sanitizeHtml = require('sanitize-html');
 const Message = require('../models/Message');
 const Problem = require('../models/Problem');
 const { cloudinary } = require('../config/cloudinary');
+const { parseMessageContent } = require('../utils/codeParser');
 
 const isMember = async (projectId, userId) => {
   const p = await Problem.findById(projectId).select('createdBy teamMembers');
@@ -49,7 +50,20 @@ exports.sendMessage = async (req, res) => {
 
     const clean = sanitizeHtml(content || '', { allowedTags: [], allowedAttributes: {} }).trim();
     if (!clean && !imageUrl) return res.status(400).json({ success: false, message: 'Empty message' });
-    const msg = await Message.create({ project: projectId, sender: req.user._id, content: clean, mentions, imageUrl, imagePublicId });
+    
+    // Parse message content for code blocks
+    const { messageType, parsedContent } = parseMessageContent(clean);
+    
+    const msg = await Message.create({ 
+      project: projectId, 
+      sender: req.user._id, 
+      content: clean, 
+      messageType,
+      parsedContent,
+      mentions, 
+      imageUrl, 
+      imagePublicId 
+    });
     const populated = await msg.populate('sender', 'username fullName profileImage');
 
     // Broadcast to project room so all members see the new message in realtime
@@ -89,7 +103,15 @@ exports.editMessage = async (req, res) => {
     if (msg.sender.toString() !== req.user._id.toString()) return res.status(403).json({ success: false, message: 'Forbidden' });
     const clean = sanitizeHtml(content || '', { allowedTags: [], allowedAttributes: {} }).trim();
     if (!clean) return res.status(400).json({ success: false, message: 'Empty message' });
-    msg.content = clean; msg.edited = true; await msg.save();
+    
+    // Parse updated message content for code blocks
+    const { messageType, parsedContent } = parseMessageContent(clean);
+    
+    msg.content = clean; 
+    msg.messageType = messageType;
+    msg.parsedContent = parsedContent;
+    msg.edited = true; 
+    await msg.save();
     const populated = await msg.populate('sender', 'username fullName profileImage');
     res.json({ success: true, data: populated });
   } catch (e) {

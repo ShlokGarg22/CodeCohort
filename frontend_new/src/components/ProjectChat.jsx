@@ -4,6 +4,8 @@ import { useSocket } from '../contexts/SocketContext';
 import { chatService } from '../services/chatService';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import MessageContent from './chat/MessageContent';
+import ChatInputHelper from './chat/ChatInputHelper';
 
 const ProjectChat = ({ projectId }) => {
   const { user } = useAuth();
@@ -345,6 +347,10 @@ const ProjectChat = ({ projectId }) => {
     }, 1000);
   };
 
+  const handleInsertCode = (codeTemplate) => {
+    setInput(prev => prev + codeTemplate);
+  };
+
   return (
     <div className="flex flex-col h-[60vh] w-full">
       <div ref={listRef} className="flex-1 overflow-y-auto space-y-3 p-3 bg-gray-50 rounded-md">
@@ -377,7 +383,10 @@ const ProjectChat = ({ projectId }) => {
                 {contentToShow && (
                   isAi
                     ? <div className="text-sm prose prose-sm max-w-none [&_a]:break-words">{renderAiContent(contentToShow)}</div>
-                    : <div className={`text-sm whitespace-pre-wrap break-words ${mine ? 'text-white' : 'text-gray-900'}`}>{contentToShow}</div>
+                    : <MessageContent 
+                        content={contentToShow} 
+                        className={`text-sm ${mine ? 'text-white' : 'text-gray-900'}`}
+                      />
                 )}
               </div>
               {mine && (
@@ -400,6 +409,7 @@ const ProjectChat = ({ projectId }) => {
             Attach
             <input type="file" accept="image/*" className="hidden" onChange={onPickImage} />
           </label>
+          <ChatInputHelper onInsertCode={handleInsertCode} />
           {imagePreview && (
             <div className="flex items-center gap-2">
               <img src={imagePreview} alt="preview" className="h-10 w-10 object-cover rounded" />
@@ -414,7 +424,7 @@ const ProjectChat = ({ projectId }) => {
             value={input}
             onChange={onInput}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder="Type a message..."
+            placeholder="Type a message or use @code for code blocks..."
             className="flex-1 border rounded-md px-3 py-2 text-sm"
           />
           <Button onClick={send} disabled={uploading || (!imageFile && !input.trim())}>

@@ -8,6 +8,7 @@ const TeamRequest = require('../models/TeamRequest');
 const Problem = require('../models/Problem');
 const User = require('../models/User');
 const Message = require('../models/Message');
+const { parseMessageContent } = require('../utils/codeParser');
 
 /**
  * Setup Socket.IO event handlers for project join notifications
@@ -454,10 +455,22 @@ const setupJoinNotificationHandlers = (io) => {
 
         // Basic sanitize on server side
         const sanitize = (s) => (typeof s === 'string' ? s.replace(/[\u0000-\u001F\u007F]/g, '').trim() : '');
-  const clean = sanitize(content);
-  if (!clean && !imageUrl) return cb && cb({ success: false, message: 'Empty message' });
+        const clean = sanitize(content);
+        if (!clean && !imageUrl) return cb && cb({ success: false, message: 'Empty message' });
 
-  const msg = await Message.create({ project: projectId, sender: userId, content: clean, mentions, imageUrl, imagePublicId });
+        // Parse message content for code blocks
+        const { messageType, parsedContent } = parseMessageContent(clean);
+
+        const msg = await Message.create({ 
+          project: projectId, 
+          sender: userId, 
+          content: clean, 
+          messageType,
+          parsedContent,
+          mentions, 
+          imageUrl, 
+          imagePublicId 
+        });
         const populated = await msg.populate('sender', 'username fullName profileImage');
 
         const payload = { type: 'message', projectId, message: populated };
@@ -488,8 +501,17 @@ const setupJoinNotificationHandlers = (io) => {
         const msg = await Message.findById(messageId);
         if (!msg || msg.project.toString() !== projectId) return cb && cb({ success: false, message: 'Not found' });
         if (msg.sender.toString() !== userId.toString()) return cb && cb({ success: false, message: 'Forbidden' });
-        const clean = (content || '').trim(); if (!clean) return cb && cb({ success: false, message: 'Empty message' });
-        msg.content = clean; msg.edited = true; await msg.save();
+        const clean = (content || '').trim(); 
+        if (!clean) return cb && cb({ success: false, message: 'Empty message' });
+        
+        // Parse updated message content for code blocks
+        const { messageType, parsedContent } = parseMessageContent(clean);
+        
+        msg.content = clean; 
+        msg.messageType = messageType;
+        msg.parsedContent = parsedContent;
+        msg.edited = true; 
+        await msg.save();
         const populated = await msg.populate('sender', 'username fullName profileImage');
         io.to(`project_${projectId}`).emit('message:edit', { projectId, message: populated });
         cb && cb({ success: true, data: populated });

@@ -16,6 +16,7 @@ import ProfilePage from "./components/ProfilePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RepositoryDebug from "./debug/RepositoryDebug";
 import GitHubRepoTester from "./components/GitHubRepoTester";
+import CodeBlockTest from "./components/CodeBlockTest";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SocketProvider } from "./contexts/SocketContext";
 import { Toaster } from "sonner";
@@ -94,6 +95,10 @@ function App() {
                     <CreateProblem />
                   </ProtectedRoute>
                 } 
+              />
+              <Route 
+                path="/test-codeblock" 
+                element={<CodeBlockTest />} 
               />
               <Route 
                 path="/project/:projectId" 
