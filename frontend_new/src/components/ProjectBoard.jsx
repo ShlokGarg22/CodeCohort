@@ -369,22 +369,25 @@ const ProjectBoard = () => {
                       Developers ({project.teamMembers.length})
                     </h4>
                     <div className="space-y-2">
-                      {project.teamMembers?.map((member) => (
-                        <div key={member?._id || Math.random()} className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={member?.profileImage} />
-                            <AvatarFallback className="text-xs">
-                              {member?.fullName?.charAt(0)?.toUpperCase() || 'U'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium text-sm">
-                              {member?._id === user?.id ? 'You' : member?.fullName || 'Unknown'}
-                            </p>
-                            <p className="text-xs text-gray-500">@{member?.username || 'unknown'}</p>
+                      {project.teamMembers?.map((member) => {
+                        const userData = member.user || member; // Handle both nested and flat structure
+                        return (
+                          <div key={userData?._id || Math.random()} className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={userData?.profileImage} />
+                              <AvatarFallback className="text-xs">
+                                {userData?.fullName?.charAt(0)?.toUpperCase() || userData?.username?.charAt(0)?.toUpperCase() || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-sm">
+                                {userData?._id === user?.id ? 'You' : userData?.fullName || userData?.username || 'Unknown'}
+                              </p>
+                              <p className="text-xs text-gray-500">@{userData?.username || 'unknown'}</p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

@@ -225,11 +225,14 @@ const KanbanBoard = ({ projectId, projectData }) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Assignees</SelectItem>
-                  {projectData?.teamMembers?.map(member => (
-                    <SelectItem key={member._id} value={member._id}>
-                      {member.fullName}
-                    </SelectItem>
-                  ))}
+                  {projectData?.teamMembers?.map(member => {
+                    const userData = member.user || member;
+                    return (
+                      <SelectItem key={userData._id} value={userData._id}>
+                        {userData.fullName || userData.username || 'Unknown'}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               
