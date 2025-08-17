@@ -144,12 +144,24 @@ const GitHubRepositoryInput = ({
   const [repoData, setRepoData] = useState(null);
   const [locked, setLocked] = useState(isLocked);
 
-  // Validate repository on mount if URL exists
+  // Validate repository on mount if URL exists and when initialRepoUrl changes
   useEffect(() => {
-    if (initialRepoUrl) {
+    if (initialRepoUrl && initialRepoUrl !== repoUrl) {
+      setRepoUrl(initialRepoUrl);
       validateRepository(initialRepoUrl, false);
+    } else if (!initialRepoUrl && repoUrl) {
+      // Reset if no initial URL
+      setRepoUrl('');
+      setIsValid(false);
+      setValidationError('');
+      setRepoData(null);
     }
   }, [initialRepoUrl]);
+
+  // Update locked state when isLocked prop changes
+  useEffect(() => {
+    setLocked(isLocked);
+  }, [isLocked]);
 
   /**
    * Validate GitHub repository URL

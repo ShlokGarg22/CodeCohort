@@ -144,10 +144,25 @@ const CreatorDashboard = () => {
     try {
       setRepoLoading(true);
       const response = await problemService.getGitHubRepository(projectId);
-      setSelectedProjectRepo(response.data);
+      console.log('Fetched repository data for project:', projectId, response.data);
+      
+      // Check if repository data exists and has a URL
+      if (response.data && response.data.url) {
+        setSelectedProjectRepo(response.data);
+      } else {
+        // No repository linked yet
+        setSelectedProjectRepo({
+          url: '',
+          owner: '',
+          name: '',
+          fullName: '',
+          isLocked: false,
+          lockedAt: null
+        });
+      }
     } catch (error) {
       console.error('Error fetching project repository:', error);
-      // Set empty repository data if none exists
+      // Set empty repository data if error occurs (e.g., no repository linked)
       setSelectedProjectRepo({
         url: '',
         owner: '',
@@ -172,13 +187,15 @@ const CreatorDashboard = () => {
 
   const handleRepositoryChange = (repoUrl, repoData, isLocked) => {
     console.log('Repository updated:', { repoUrl, repoData, isLocked });
-    // Update local state
-    setSelectedProjectRepo(prev => ({
-      ...prev,
-      url: repoUrl,
+    // Update local state with all repository information
+    setSelectedProjectRepo({
+      url: repoUrl || '',
+      owner: repoData?.owner?.login || '',
+      name: repoData?.name || '',
+      fullName: repoData?.full_name || repoData?.fullName || '',
       isLocked,
       lockedAt: isLocked ? new Date().toISOString() : null
-    }));
+    });
     toast.success(`Repository ${isLocked ? 'locked' : 'updated'} successfully!`);
   };
 
@@ -420,13 +437,23 @@ const CreatorDashboard = () => {
               {/* GitHub Repository Input for selected project */}
               {selectedProject && (
                 <div className="space-y-4">
-                  <GitHubRepositoryInput
-                    projectId={selectedProject}
-                    initialRepoUrl={selectedProjectRepo?.url || ""}
-                    isLocked={selectedProjectRepo?.isLocked || false}
-                    canEdit={true}
-                    onRepositoryChange={handleRepositoryChange}
-                  />
+                  {repoLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+                        <span className="text-gray-600">Loading repository data...</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <GitHubRepositoryInput
+                      key={selectedProject} // Force re-render when project changes
+                      projectId={selectedProject}
+                      initialRepoUrl={selectedProjectRepo?.url || ""}
+                      isLocked={selectedProjectRepo?.isLocked || false}
+                      canEdit={true}
+                      onRepositoryChange={handleRepositoryChange}
+                    />
+                  )}
                   
                   {/* Lock/Unlock Repository Section */}
                   {selectedProjectRepo && selectedProjectRepo.url && (
