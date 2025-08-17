@@ -6,6 +6,7 @@ const {
   signup,
   signin,
   getProfile,
+  getUserProfile,
   updateProfile,
   changePassword,
   logout,
@@ -30,6 +31,7 @@ router.get('/github/callback',
 router.use(authenticateToken); // Apply auth middleware to all routes below
 
 router.get('/profile', getProfile);
+router.get('/users/:userId', getUserProfile); // Get another user's public profile
 router.put('/profile', updateProfile);
 router.put('/change-password', changePassword);
 router.post('/logout', logout);

@@ -219,7 +219,7 @@ const getCreatorJoinRequests = async (req, res) => {
       creator: userId,
       status: 'pending'
     })
-    .populate('requester', 'username fullName profileImage')
+    .populate('requester', 'username fullName profileImage bio location skills experience role')
     .populate('project', 'title description')
     .sort({ createdAt: -1 });
 

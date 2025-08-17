@@ -4,12 +4,14 @@ import { useSocket } from '../contexts/SocketContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Alert, AlertDescription } from './ui/alert';
 import { problemService } from '../services/problemService';
 import { teamService } from '../services/teamService';
 import GitHubRepositoryInput from './VersionHistory/GitHubRepositoryInput';
 import TeamManagement from './TeamManagement';
 import EndProjectModal from './EndProjectModal';
+import UserProfileModal from './UserProfileModal';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Plus, 
@@ -29,7 +31,8 @@ import {
   Github,
   Lock,
   Unlock,
-  XCircle
+  XCircle,
+  Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -46,6 +49,7 @@ const CreatorDashboard = () => {
   const [repoLoading, setRepoLoading] = useState(false);
   const [endProjectModal, setEndProjectModal] = useState({ isOpen: false, project: null });
   const [endingProject, setEndingProject] = useState(false);
+  const [profileModal, setProfileModal] = useState({ isOpen: false, userId: null, userData: null });
 
   const isApproved = user?.creatorStatus === 'approved';
   const isPending = user?.creatorStatus === 'pending';
@@ -260,6 +264,14 @@ const CreatorDashboard = () => {
 
   const handleCloseEndProjectModal = () => {
     setEndProjectModal({ isOpen: false, project: null });
+  };
+
+  const handleViewProfile = (userId, userData = null) => {
+    setProfileModal({ isOpen: true, userId, userData });
+  };
+
+  const handleCloseProfileModal = () => {
+    setProfileModal({ isOpen: false, userId: null, userData: null });
   };
 
   if (isPending) {
@@ -535,31 +547,63 @@ const CreatorDashboard = () => {
             ) : (
               <div className="space-y-4">
                 {displayJoinRequests.map((request) => (
-                  <div key={request._id || request.requestId} className="flex items-center justify-between p-4 border rounded-lg bg-blue-50">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <User className="h-4 w-4" />
-                        <span className="font-medium">
-                          {request.requester?.fullName || request.requester?.username || request.user?.fullName}
-                        </span>
-                        <span className="text-sm text-gray-500">wants to join</span>
-                        <span className="font-medium">
-                          {request.projectTitle || request.project?.title}
-                        </span>
-                      </div>
-                      {request.message && (
-                        <p className="text-sm text-gray-600 mb-2 pl-6">
-                          "{request.message}"
-                        </p>
-                      )}
-                      <div className="flex items-center gap-4 text-xs text-gray-500 pl-6">
-                        <span>
-                          Requested {new Date(request.timestamp || request.createdAt).toLocaleDateString()}
-                        </span>
-                        <span>Team: {request.project?.teamMembers?.length || 0}/{request.project?.maxTeamSize || 5}</span>
+                  <div key={request._id || request.requestId} className="flex items-start justify-between p-4 border rounded-lg bg-blue-50">
+                    <div className="flex gap-3 flex-1">
+                      {/* User Avatar */}
+                      <Avatar className="h-10 w-10 mt-1">
+                        <AvatarImage src={request.requester?.profileImage || request.user?.profileImage} />
+                        <AvatarFallback>
+                          {(request.requester?.fullName || request.user?.fullName || request.requester?.username || request.user?.username)?.charAt(0)?.toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      {/* Request Details */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-medium">
+                            {request.requester?.fullName || request.requester?.username || request.user?.fullName}
+                          </span>
+                          <span className="text-sm text-gray-500">wants to join</span>
+                          <span className="font-medium">
+                            {request.projectTitle || request.project?.title}
+                          </span>
+                        </div>
+                        
+                        {/* User info */}
+                        <div className="text-xs text-gray-600 mb-2">
+                          @{request.requester?.username || request.user?.username}
+                          {(request.requester?.bio || request.user?.bio) && (
+                            <span className="ml-2">• {(request.requester?.bio || request.user?.bio).substring(0, 50)}...</span>
+                          )}
+                        </div>
+                        
+                        {request.message && (
+                          <p className="text-sm text-gray-600 mb-2 italic">
+                            "{request.message}"
+                          </p>
+                        )}
+                        
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>
+                            Requested {new Date(request.timestamp || request.createdAt).toLocaleDateString()}
+                          </span>
+                          <span>Team: {request.project?.teamMembers?.length || 0}/{request.project?.maxTeamSize || 5}</span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewProfile(
+                          request.requester?._id || request.user?._id, 
+                          request.requester || request.user
+                        )}
+                        className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View Profile
+                      </Button>
                       <Button
                         size="sm"
                         onClick={() => handleJoinRequestAction(request, 'approve')}
@@ -700,6 +744,14 @@ const CreatorDashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* User Profile Modal */}
+      <UserProfileModal
+        isOpen={profileModal.isOpen}
+        onClose={handleCloseProfileModal}
+        userId={profileModal.userId}
+        initialUserData={profileModal.userData}
+      />
 
       {/* End Project Modal */}
       <EndProjectModal

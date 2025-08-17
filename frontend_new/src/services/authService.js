@@ -95,5 +95,15 @@ export const authService = {
       console.error('Change password error:', error);
       throw new Error(error.response?.data?.message || 'Failed to change password');
     }
+  },
+
+  async getUserProfile(userId) {
+    try {
+      const response = await api.get(`/auth/users/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Get user profile error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch user profile');
+    }
   }
 };

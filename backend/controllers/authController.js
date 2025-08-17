@@ -161,6 +161,58 @@ const getProfile = async (req, res) => {
   }
 };
 
+// Get another user's public profile
+const getUserProfile = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId)
+      .select('username fullName profileImage bio location skills experience githubUsername portfolioUrl joinedProjects role createdAt')
+      .populate('joinedProjects', 'title description difficulty category');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Calculate some stats
+    const stats = {
+      totalProjects: user.joinedProjects?.length || 0,
+      memberSince: user.createdAt,
+      // You could add more stats like completed projects, skills count, etc.
+    };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        user: {
+          _id: user._id,
+          username: user.username,
+          fullName: user.fullName,
+          profileImage: user.profileImage,
+          bio: user.bio,
+          location: user.location,
+          skills: user.skills,
+          experience: user.experience,
+          githubUsername: user.githubUsername,
+          portfolioUrl: user.portfolioUrl,
+          role: user.role,
+          joinedProjects: user.joinedProjects,
+          stats
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get user profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 // Update user profile
 const updateProfile = async (req, res) => {
   try {
@@ -432,6 +484,7 @@ module.exports = {
   signup,
   signin,
   getProfile,
+  getUserProfile,
   updateProfile,
   changePassword,
   logout,
