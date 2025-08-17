@@ -107,7 +107,7 @@ const getProblems = async (req, res) => {
     const { difficulty, category, tags, search } = req.query;
 
     // Build filter
-    let filter = { isActive: true };
+    let filter = { isActive: true, projectStatus: 'active' };
     
     if (difficulty) {
       filter.difficulty = difficulty;
@@ -552,6 +552,121 @@ const unlockGitHubRepository = async (req, res) => {
   }
 };
 
+// End a project (only by creator)
+const endProject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, status = 'ended' } = req.body;
+
+    const problem = await Problem.findById(id)
+      .populate('teamMembers.user', 'username fullName email');
+
+    if (!problem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Project not found'
+      });
+    }
+
+    // Check if user is the creator
+    if (problem.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the project creator or an admin can end the project'
+      });
+    }
+
+    // Check if project is already ended
+    if (problem.projectStatus !== 'active') {
+      return res.status(400).json({
+        success: false,
+        message: `Project is already ${problem.projectStatus}`
+      });
+    }
+
+    // Validate status
+    const validStatuses = ['completed', 'cancelled', 'ended'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid project status. Must be completed, cancelled, or ended'
+      });
+    }
+
+    // Update project status
+    problem.projectStatus = status;
+    problem.endedAt = new Date();
+    problem.endReason = reason || '';
+    problem.isActive = false; // Mark as inactive for listing purposes
+    await problem.save();
+
+    // Remove project from all team members' joined projects
+    const User = require('../models/User');
+    const teamMemberIds = problem.teamMembers.map(member => member.user._id);
+    
+    await User.updateMany(
+      { _id: { $in: teamMemberIds } },
+      { $pull: { joinedProjects: id } }
+    );
+
+    // Remove creator's project reference as well
+    await User.findByIdAndUpdate(
+      req.user._id,
+      { $pull: { joinedProjects: id } }
+    );
+
+    // Clean up pending team requests
+    const TeamRequest = require('../models/TeamRequest');
+    await TeamRequest.deleteMany({ project: id, status: 'pending' });
+
+    // Optionally, you could also handle tasks cleanup here
+    // const Task = require('../models/Task');
+    // await Task.updateMany({ projectId: id }, { isActive: false });
+
+    // Send notification to team members via Socket.io
+    const io = req.app.get('io');
+    if (io) {
+      const notificationData = {
+        type: 'project_ended',
+        projectId: id,
+        projectTitle: problem.title,
+        status: status,
+        reason: reason,
+        endedBy: req.user.username,
+        timestamp: new Date()
+      };
+
+      // Notify all team members
+      problem.teamMembers.forEach(member => {
+        if (member.user._id.toString() !== req.user._id.toString()) {
+          io.to(`user-${member.user._id}`).emit('project-ended', notificationData);
+        }
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Project ${status} successfully`,
+      data: {
+        project: {
+          _id: problem._id,
+          title: problem.title,
+          projectStatus: problem.projectStatus,
+          endedAt: problem.endedAt,
+          endReason: problem.endReason
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('End project error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 module.exports = {
   createProblem,
   getProblems,
@@ -563,5 +678,6 @@ module.exports = {
   updateGitHubRepository,
   getGitHubRepository,
   lockGitHubRepository,
-  unlockGitHubRepository
+  unlockGitHubRepository,
+  endProject
 };

@@ -42,9 +42,9 @@ const KanbanBoard = ({ projectId, projectData }) => {
     ) || projectData?.teamMembers?.includes(user?.id)
   );
   
-  const canManageTasks = isCreator || isAdmin;
+  const canManageTasks = (isCreator || isAdmin) && projectData?.projectStatus === 'active';
   const canViewAllTasks = isCreator || isAdmin;
-  const canCreateTasks = isCreator || isAdmin || isDeveloper;
+  const canCreateTasks = (isCreator || isAdmin || isDeveloper) && projectData?.projectStatus === 'active';
 
   useEffect(() => {
     if (user && projectId) {

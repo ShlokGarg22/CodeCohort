@@ -228,6 +228,50 @@ const ProjectBoard = () => {
         </div>
       </div>
 
+      {/* Ended Project Banner */}
+      {project.projectStatus !== 'active' && (
+        <div className={`${
+          project.projectStatus === 'completed' 
+            ? 'bg-blue-50 border-blue-200' 
+            : project.projectStatus === 'cancelled'
+            ? 'bg-red-50 border-red-200'
+            : 'bg-orange-50 border-orange-200'
+        } border-b px-4 py-3`}>
+          <div className="max-w-7xl mx-auto flex items-center gap-3">
+            <AlertCircle className={`h-5 w-5 ${
+              project.projectStatus === 'completed' 
+                ? 'text-blue-600' 
+                : project.projectStatus === 'cancelled'
+                ? 'text-red-600'
+                : 'text-orange-600'
+            }`} />
+            <div className="flex-1">
+              <p className={`font-medium ${
+                project.projectStatus === 'completed' 
+                  ? 'text-blue-900' 
+                  : project.projectStatus === 'cancelled'
+                  ? 'text-red-900'
+                  : 'text-orange-900'
+              }`}>
+                This project has been {project.projectStatus}
+                {project.endedAt && ` on ${format(new Date(project.endedAt), 'PPP')}`}
+              </p>
+              {project.endReason && (
+                <p className={`text-sm mt-1 ${
+                  project.projectStatus === 'completed' 
+                    ? 'text-blue-700' 
+                    : project.projectStatus === 'cancelled'
+                    ? 'text-red-700'
+                    : 'text-orange-700'
+                }`}>
+                  {project.endReason}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Project Info Card */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Card className="mb-6">

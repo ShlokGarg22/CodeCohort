@@ -52,6 +52,14 @@ const createTask = async (req, res) => {
       });
     }
 
+    // Check if project is still active
+    if (project.projectStatus !== 'active') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot create tasks in a ${project.projectStatus} project`
+      });
+    }
+
     // Check permissions - Project creators, admins, and team members can create tasks
     const isProjectCreator = project.createdBy.toString() === req.user._id.toString();
     const isAdmin = req.user.role === 'admin';
@@ -207,6 +215,14 @@ const updateTask = async (req, res) => {
     }
 
     const project = task.projectId;
+
+    // Check if project is still active
+    if (project.projectStatus !== 'active') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot update tasks in a ${project.projectStatus} project`
+      });
+    }
 
     // Check permissions
     const isProjectCreator = project.createdBy.toString() === req.user._id.toString();

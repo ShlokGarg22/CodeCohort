@@ -20,7 +20,9 @@ import {
   Activity,
   Settings,
   Download,
-  Crown
+  Crown,
+  Trash2,
+  StopCircle
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -51,6 +53,7 @@ const AdminDashboard = () => {
   const [pendingCreators, setPendingCreators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [alert, setAlert] = useState({ show: false, message: '', type: 'info' });
+  const [projectAction, setProjectAction] = useState({ loading: false, projectId: null });
 
   const api = axios.create({
     baseURL: 'http://localhost:5000/api/v1',
@@ -365,8 +368,11 @@ const AdminDashboard = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="h-5 w-5" />
-          Problem Moderation
+          Project Management
         </CardTitle>
+        <CardDescription>
+          Manage, moderate, and control projects. End active projects or permanently delete them.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
@@ -388,11 +394,15 @@ const AdminDashboard = () => {
                   <td className="p-3">{problem.createdBy?.fullName}</td>
                   <td className="p-3">
                     <span className={`px-2 py-1 rounded text-sm ${
+                      problem.projectStatus === 'active' ? 'bg-green-100 text-green-800' :
+                      problem.projectStatus === 'completed' ? 'bg-blue-100 text-blue-800' :
+                      problem.projectStatus === 'ended' ? 'bg-orange-100 text-orange-800' :
+                      problem.projectStatus === 'cancelled' ? 'bg-red-100 text-red-800' :
                       problem.status === 'approved' ? 'bg-green-100 text-green-800' :
                       problem.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-red-100 text-red-800'
                     }`}>
-                      {problem.status || 'active'}
+                      {problem.projectStatus || problem.status || 'active'}
                     </span>
                   </td>
                   <td className="p-3">{new Date(problem.createdAt).toLocaleDateString()}</td>
@@ -402,9 +412,52 @@ const AdminDashboard = () => {
                       <button
                         onClick={() => approveProblem(problem._id)}
                         className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                        disabled={problem.status === 'approved'}
                       >
                         Approve
                       </button>
+                      {problem.projectStatus === 'active' && (
+                        <>
+                          <button
+                            onClick={() => adminEndProject(problem._id, problem.title)}
+                            className="px-3 py-1 bg-orange-500 text-white rounded text-sm hover:bg-orange-600 flex items-center gap-1"
+                            disabled={projectAction.loading && projectAction.projectId === problem._id}
+                          >
+                            {projectAction.loading && projectAction.projectId === problem._id ? (
+                              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <StopCircle className="h-3 w-3" />
+                            )}
+                            End
+                          </button>
+                          <button
+                            onClick={() => adminDeleteProject(problem._id, problem.title)}
+                            className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 flex items-center gap-1"
+                            disabled={projectAction.loading && projectAction.projectId === problem._id}
+                          >
+                            {projectAction.loading && projectAction.projectId === problem._id ? (
+                              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
+                            Delete
+                          </button>
+                        </>
+                      )}
+                      {problem.projectStatus !== 'active' && (
+                        <button
+                          onClick={() => adminDeleteProject(problem._id, problem.title)}
+                          className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 flex items-center gap-1"
+                          disabled={projectAction.loading && projectAction.projectId === problem._id}
+                        >
+                          {projectAction.loading && projectAction.projectId === problem._id ? (
+                            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3" />
+                          )}
+                          Delete
+                        </button>
+                      )}
                       <button className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600">
                         View
                       </button>
@@ -509,6 +562,75 @@ const AdminDashboard = () => {
         message: `Failed to export ${dataType} data`,
         type: 'error'
       });
+    }
+  };
+
+  const adminEndProject = async (projectId, projectTitle) => {
+    const reason = prompt(`Enter reason for ending project "${projectTitle}":`);
+    if (!reason) return;
+
+    const status = confirm('Mark as completed? (OK for completed, Cancel for ended)') ? 'completed' : 'ended';
+
+    try {
+      setProjectAction({ loading: true, projectId });
+      await api.put(`/admin/problems/${projectId}/end`, { reason, status });
+      
+      setAlert({
+        show: true,
+        message: `Project "${projectTitle}" has been ${status} successfully`,
+        type: 'success'
+      });
+      
+      fetchAdminData(); // Refresh data
+      setTimeout(() => setAlert({ show: false, message: '', type: 'info' }), 3000);
+    } catch (error) {
+      console.error('Error ending project:', error);
+      setAlert({
+        show: true,
+        message: error.response?.data?.message || 'Failed to end project',
+        type: 'error'
+      });
+    } finally {
+      setProjectAction({ loading: false, projectId: null });
+    }
+  };
+
+  const adminDeleteProject = async (projectId, projectTitle) => {
+    const confirmation = prompt(`Type "${projectTitle}" to confirm permanent deletion:`);
+    if (confirmation !== projectTitle) {
+      setAlert({
+        show: true,
+        message: 'Project deletion cancelled - title did not match',
+        type: 'error'
+      });
+      return;
+    }
+
+    if (!confirm(`Are you absolutely sure you want to permanently delete "${projectTitle}"? This action cannot be undone and will remove all related data including tasks, messages, and team requests.`)) {
+      return;
+    }
+
+    try {
+      setProjectAction({ loading: true, projectId });
+      await api.delete(`/admin/problems/${projectId}`);
+      
+      setAlert({
+        show: true,
+        message: `Project "${projectTitle}" has been permanently deleted`,
+        type: 'success'
+      });
+      
+      fetchAdminData(); // Refresh data
+      setTimeout(() => setAlert({ show: false, message: '', type: 'info' }), 3000);
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      setAlert({
+        show: true,
+        message: error.response?.data?.message || 'Failed to delete project',
+        type: 'error'
+      });
+    } finally {
+      setProjectAction({ loading: false, projectId: null });
     }
   };
 

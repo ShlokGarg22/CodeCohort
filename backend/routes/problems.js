@@ -12,7 +12,8 @@ const {
   updateGitHubRepository,
   getGitHubRepository,
   lockGitHubRepository,
-  unlockGitHubRepository
+  unlockGitHubRepository,
+  endProject
 } = require('../controllers/problemController');
 
 // Public routes
@@ -36,5 +37,8 @@ router.put('/:projectId/github-repository', updateGitHubRepository); // Update G
 router.get('/:projectId/github-repository', getGitHubRepository); // Get GitHub repository
 router.put('/:projectId/github-repository/lock', lockGitHubRepository); // Lock GitHub repository
 router.put('/:projectId/github-repository/unlock', unlockGitHubRepository); // Unlock GitHub repository
+
+// Project management routes
+router.put('/:id/end', endProject); // End project (creator only)
 
 module.exports = router;

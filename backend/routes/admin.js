@@ -512,4 +512,152 @@ router.get('/export', async (req, res) => {
   }
 });
 
+// Admin Project Management
+
+// End project (admin only)
+router.put('/problems/:id/end', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, status = 'ended' } = req.body;
+
+    const problem = await Problem.findById(id)
+      .populate('teamMembers.user', 'username fullName email');
+
+    if (!problem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Project not found'
+      });
+    }
+
+    // Check if project is already ended
+    if (problem.projectStatus !== 'active') {
+      return res.status(400).json({
+        success: false,
+        message: `Project is already ${problem.projectStatus}`
+      });
+    }
+
+    // Validate status
+    const validStatuses = ['completed', 'cancelled', 'ended'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid project status. Must be completed, cancelled, or ended'
+      });
+    }
+
+    // Update project status
+    problem.projectStatus = status;
+    problem.endedAt = new Date();
+    problem.endReason = reason || `Project ${status} by admin`;
+    problem.isActive = false; // Mark as inactive for listing purposes
+    await problem.save();
+
+    // Remove project from all team members' joined projects
+    const User = require('../models/User');
+    const teamMemberIds = problem.teamMembers.map(member => member.user._id);
+    
+    await User.updateMany(
+      { _id: { $in: teamMemberIds } },
+      { $pull: { joinedProjects: id } }
+    );
+
+    // Remove creator's project reference as well
+    await User.findByIdAndUpdate(
+      problem.createdBy,
+      { $pull: { joinedProjects: id } }
+    );
+
+    // Clean up pending team requests
+    const TeamRequest = require('../models/TeamRequest');
+    await TeamRequest.deleteMany({ project: id, status: 'pending' });
+
+    res.status(200).json({
+      success: true,
+      message: `Project ${status} successfully by admin`,
+      data: {
+        project: {
+          _id: problem._id,
+          title: problem.title,
+          projectStatus: problem.projectStatus,
+          endedAt: problem.endedAt,
+          endReason: problem.endReason
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Admin end project error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// Delete project permanently (admin only)
+router.delete('/problems/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const problem = await Problem.findById(id)
+      .populate('teamMembers.user', 'username fullName email');
+
+    if (!problem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Project not found'
+      });
+    }
+
+    // Remove project from all team members' joined projects
+    const User = require('../models/User');
+    const teamMemberIds = problem.teamMembers.map(member => member.user._id);
+    
+    await User.updateMany(
+      { _id: { $in: teamMemberIds } },
+      { $pull: { joinedProjects: id } }
+    );
+
+    // Remove creator's project reference as well
+    await User.findByIdAndUpdate(
+      problem.createdBy,
+      { $pull: { joinedProjects: id } }
+    );
+
+    // Clean up related data
+    const TeamRequest = require('../models/TeamRequest');
+    const Task = require('../models/Task');
+    const Message = require('../models/Message');
+
+    await Promise.all([
+      TeamRequest.deleteMany({ project: id }),
+      Task.deleteMany({ projectId: id }),
+      Message.deleteMany({ project: id })
+    ]);
+
+    // Delete the project
+    await Problem.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Project deleted permanently by admin',
+      data: {
+        deletedProject: {
+          _id: problem._id,
+          title: problem.title
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Admin delete project error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
 module.exports = router;

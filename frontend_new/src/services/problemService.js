@@ -212,5 +212,15 @@ export const problemService = {
       console.error('Unlock GitHub repository error:', error);
       throw new Error(error.response?.data?.message || 'Failed to unlock GitHub repository');
     }
+  },
+
+  async endProject(projectId, endData) {
+    try {
+      const response = await api.put(`/problems/${projectId}/end`, endData);
+      return response.data;
+    } catch (error) {
+      console.error('End project error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to end project');
+    }
   }
 };

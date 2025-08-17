@@ -72,6 +72,18 @@ const problemSchema = new mongoose.Schema({
     enum: ['pending', 'approved', 'rejected', 'active'],
     default: 'active'
   },
+  projectStatus: {
+    type: String,
+    enum: ['active', 'completed', 'cancelled', 'ended'],
+    default: 'active'
+  },
+  endedAt: {
+    type: Date
+  },
+  endReason: {
+    type: String,
+    maxlength: 500
+  },
   approvedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

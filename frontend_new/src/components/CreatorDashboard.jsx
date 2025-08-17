@@ -9,6 +9,7 @@ import { problemService } from '../services/problemService';
 import { teamService } from '../services/teamService';
 import GitHubRepositoryInput from './VersionHistory/GitHubRepositoryInput';
 import TeamManagement from './TeamManagement';
+import EndProjectModal from './EndProjectModal';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Plus, 
@@ -27,7 +28,8 @@ import {
   GitBranch,
   Github,
   Lock,
-  Unlock
+  Unlock,
+  XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -42,6 +44,8 @@ const CreatorDashboard = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedProjectRepo, setSelectedProjectRepo] = useState(null);
   const [repoLoading, setRepoLoading] = useState(false);
+  const [endProjectModal, setEndProjectModal] = useState({ isOpen: false, project: null });
+  const [endingProject, setEndingProject] = useState(false);
 
   const isApproved = user?.creatorStatus === 'approved';
   const isPending = user?.creatorStatus === 'pending';
@@ -210,6 +214,35 @@ const CreatorDashboard = () => {
       console.error('Error unlocking repository:', error);
       toast.error(error.message || 'Failed to unlock repository');
     }
+  };
+
+  const handleEndProject = (project) => {
+    setEndProjectModal({ isOpen: true, project });
+  };
+
+  const handleConfirmEndProject = async (endData) => {
+    if (!endProjectModal.project) return;
+
+    try {
+      setEndingProject(true);
+      await problemService.endProject(endProjectModal.project._id, endData);
+      
+      toast.success(`Project "${endProjectModal.project.title}" has been ${endData.status} successfully!`);
+      
+      // Close modal and refresh data
+      setEndProjectModal({ isOpen: false, project: null });
+      await fetchMyProblems();
+      
+    } catch (error) {
+      console.error('Error ending project:', error);
+      toast.error(error.message || 'Failed to end project');
+    } finally {
+      setEndingProject(false);
+    }
+  };
+
+  const handleCloseEndProjectModal = () => {
+    setEndProjectModal({ isOpen: false, project: null });
   };
 
   if (isPending) {
@@ -574,9 +607,27 @@ const CreatorDashboard = () => {
                     </div>
                     <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
                       <span>Created: {new Date(problem.createdAt).toLocaleDateString()}</span>
-                      <span className={`font-medium ${problem.isActive ? 'text-green-600' : 'text-gray-500'}`}>
-                        {problem.isActive ? 'Active' : 'Draft'}
+                      <span className={`font-medium ${
+                        problem.projectStatus === 'active' 
+                          ? 'text-green-600' 
+                          : problem.projectStatus === 'completed'
+                          ? 'text-blue-600'
+                          : problem.projectStatus === 'cancelled'
+                          ? 'text-red-600'
+                          : 'text-orange-600'
+                      }`}>
+                        {problem.projectStatus === 'active' 
+                          ? 'Active' 
+                          : problem.projectStatus === 'completed'
+                          ? 'Completed'
+                          : problem.projectStatus === 'cancelled'
+                          ? 'Cancelled'
+                          : 'Ended'
+                        }
                       </span>
+                      {problem.endedAt && (
+                        <span>Ended: {new Date(problem.endedAt).toLocaleDateString()}</span>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -601,6 +652,20 @@ const CreatorDashboard = () => {
                       <Edit className="h-4 w-4 mr-1" />
                       Edit
                     </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleEndProject(problem)}
+                      disabled={problem.projectStatus !== 'active'}
+                      className={`${
+                        problem.projectStatus !== 'active' 
+                          ? 'opacity-50 cursor-not-allowed' 
+                          : 'text-red-600 border-red-600 hover:bg-red-50'
+                      }`}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      {problem.projectStatus !== 'active' ? 'Project Ended' : 'End Project'}
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -608,6 +673,15 @@ const CreatorDashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* End Project Modal */}
+      <EndProjectModal
+        isOpen={endProjectModal.isOpen}
+        onClose={handleCloseEndProjectModal}
+        onConfirm={handleConfirmEndProject}
+        project={endProjectModal.project}
+        loading={endingProject}
+      />
     </div>
   );
 };
