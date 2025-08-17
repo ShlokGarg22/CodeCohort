@@ -140,6 +140,10 @@ const CreatorDashboard = () => {
     navigate(`/project/${projectId}`);
   };
 
+  const handleEditProject = (projectId) => {
+    navigate(`/edit-problem/${projectId}`);
+  };
+
   const handleViewVersionHistory = (projectId) => {
     navigate(`/project/${projectId}/version-history`);
   };
@@ -719,7 +723,7 @@ const CreatorDashboard = () => {
                       <ExternalLink className="h-4 w-4 mr-1" />
                       Open Board
                     </Button>
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" onClick={() => handleEditProject(problem._id)}>
                       <Edit className="h-4 w-4 mr-1" />
                       Edit
                     </Button>

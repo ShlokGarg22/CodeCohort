@@ -11,6 +11,7 @@ import VersionHistory from "./components/VersionHistory";
 import DemoVersionHistory from "./components/DemoVersionHistory";
 import Dashboard from "./components/Dashboard";
 import CreateProblem from "./components/CreateProblem";
+import EditProblem from "./components/EditProblem";
 import ProjectBoard from "./components/ProjectBoard";
 import ProfilePage from "./components/ProfilePage";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -93,6 +94,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <CreateProblem />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/edit-problem/:projectId" 
+                element={
+                  <ProtectedRoute>
+                    <EditProblem />
                   </ProtectedRoute>
                 } 
               />
