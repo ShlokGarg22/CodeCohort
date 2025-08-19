@@ -34,35 +34,35 @@ const rateLimits = {
   // General API rate limit
   general: createRateLimit(
     15 * 60 * 1000, // 15 minutes
-    100, // limit each IP to 100 requests per windowMs
+    1000, // limit each IP to 1000 requests per windowMs
     'Too many API requests, please try again later.'
   ),
 
   // Stricter rate limit for authentication endpoints
   auth: createRateLimit(
     15 * 60 * 1000, // 15 minutes
-    5, // limit each IP to 5 requests per windowMs
+    50, // limit each IP to 50 requests per windowMs
     'Too many authentication attempts, please try again later.'
   ),
 
   // Rate limit for chat/messaging
   chat: createRateLimit(
     1 * 60 * 1000, // 1 minute
-    30, // limit each IP to 30 messages per minute
+    300, // limit each IP to 300 messages per minute
     'Too many messages, please slow down.'
   ),
 
   // Rate limit for problem creation
   problemCreation: createRateLimit(
     60 * 60 * 1000, // 1 hour
-    10, // limit each IP to 10 problem creations per hour
+    100, // limit each IP to 100 problem creations per hour
     'Too many problems created, please try again later.'
   ),
 
   // Rate limit for team operations
   teamOperations: createRateLimit(
     10 * 60 * 1000, // 10 minutes
-    20, // limit each IP to 20 team operations per 10 minutes
+    200, // limit each IP to 200 team operations per 10 minutes
     'Too many team operations, please try again later.'
   )
 };
@@ -153,20 +153,48 @@ const validationRules = {
   // Problem creation/update validations
   problemValidation: [
     body('title')
-      .isLength({ min: 5, max: 100 })
-      .withMessage('Title must be between 5 and 100 characters'),
+      .isLength({ min: 1, max: 200 })
+      .withMessage('Title must be between 1 and 200 characters'),
     body('description')
-      .isLength({ min: 20, max: 5000 })
-      .withMessage('Description must be between 20 and 5000 characters'),
+      .isLength({ min: 1, max: 5000 })
+      .withMessage('Description must be between 1 and 5000 characters'),
     body('difficulty')
-      .isIn(['Easy', 'Medium', 'Hard'])
-      .withMessage('Difficulty must be Easy, Medium, or Hard'),
+      .isIn(['Beginner', 'Intermediate', 'Advanced'])
+      .withMessage('Difficulty must be Beginner, Intermediate, or Advanced'),
+    body('category')
+      .isLength({ min: 1 })
+      .withMessage('Category is required'),
+    body('projectType')
+      .isLength({ min: 1 })
+      .withMessage('Project type is required'),
     body('techStack')
-      .isArray({ min: 1, max: 10 })
-      .withMessage('Tech stack must be an array with 1-10 items'),
-    body('maxTeamSize')
-      .isInt({ min: 2, max: 10 })
-      .withMessage('Max team size must be between 2 and 10')
+      .isArray({ min: 1, max: 20 })
+      .withMessage('Tech stack must be an array with 1-20 items'),
+    body('timeEstimate')
+      .isLength({ min: 1 })
+      .withMessage('Time estimate is required'),
+    body('teamSize')
+      .isLength({ min: 1 })
+      .withMessage('Team size is required'),
+    body('requirements')
+      .isLength({ min: 1 })
+      .withMessage('Requirements are required'),
+    body('deliverables')
+      .optional()
+      .isLength({ max: 5000 })
+      .withMessage('Deliverables must not exceed 5000 characters'),
+    body('evaluation')
+      .optional()
+      .isLength({ max: 5000 })
+      .withMessage('Evaluation must not exceed 5000 characters'),
+    body('resources')
+      .optional()
+      .isLength({ max: 5000 })
+      .withMessage('Resources must not exceed 5000 characters'),
+    body('tags')
+      .optional()
+      .isArray({ max: 20 })
+      .withMessage('Tags must be an array with maximum 20 items')
   ],
 
   // Chat message validations

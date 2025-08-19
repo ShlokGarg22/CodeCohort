@@ -77,10 +77,39 @@ const CreateProblem = () => {
             <CardTitle className="text-red-600">Access Denied</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600 mb-4">
-              Only approved creators can create problems.
-            </p>
-            <Button onClick={() => navigate('/dashboard')} className="w-full">
+            <div className="space-y-4">
+              <p className="text-gray-600">
+                Only approved creators can create problems.
+              </p>
+              
+              {/* Debug Information */}
+              <div className="bg-gray-100 p-3 rounded text-sm">
+                <div><strong>Current Status:</strong></div>
+                <div>Role: {user?.role || 'Not logged in'}</div>
+                <div>Creator Status: {user?.creatorStatus || 'N/A'}</div>
+                <div>Authenticated: {user ? 'Yes' : 'No'}</div>
+                <div>Token: {localStorage.getItem('token') ? 'Present' : 'Missing'}</div>
+              </div>
+
+              {!user && (
+                <p className="text-sm text-red-600">
+                  Please log in to access this page.
+                </p>
+              )}
+              
+              {user && user.role !== 'creator' && (
+                <p className="text-sm text-red-600">
+                  You need to have a 'creator' role to create problems. Your current role is '{user.role}'.
+                </p>
+              )}
+              
+              {user && user.role === 'creator' && user.creatorStatus !== 'approved' && (
+                <p className="text-sm text-red-600">
+                  Your creator status is '{user.creatorStatus}'. It needs to be 'approved' to create problems.
+                </p>
+              )}
+            </div>
+            <Button onClick={() => navigate('/dashboard')} className="w-full mt-4">
               Back to Dashboard
             </Button>
           </CardContent>
@@ -180,9 +209,25 @@ const CreateProblem = () => {
 
     } catch (error) {
       console.error('Error creating project:', error);
+      
+      // More specific error handling
+      let errorMessage = 'Failed to create project';
+      
+      if (error.message.includes('Access token required')) {
+        errorMessage = 'You are not logged in. Please log in and try again.';
+      } else if (error.message.includes('Access denied')) {
+        errorMessage = 'You do not have permission to create projects. Only approved creators can create projects.';
+      } else if (error.message.includes('Validation error') || error.message.includes('Validation failed')) {
+        errorMessage = 'Please check your input data. Some fields may be invalid.';
+      } else if (error.message.includes('Unable to connect')) {
+        errorMessage = 'Unable to connect to server. Please check if the backend is running.';
+      } else {
+        errorMessage = error.message || 'Failed to create project';
+      }
+      
       setAlert({
         show: true,
-        message: error.message || 'Failed to create project',
+        message: errorMessage,
         type: 'error'
       });
     } finally {

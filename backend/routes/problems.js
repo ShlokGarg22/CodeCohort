@@ -36,8 +36,11 @@ router.delete('/:id', deleteProblem); // Delete problem (creator/admin only)
 
 // GitHub repository routes with validation
 router.put('/:projectId/github-repository', [
-  body('repositoryUrl').isURL().withMessage('Invalid repository URL'),
-  body('repositoryName').isLength({ min: 1, max: 100 }).withMessage('Repository name must be 1-100 characters')
+  body('url').optional().isURL().withMessage('Invalid repository URL'),
+  body('owner').optional().isLength({ min: 1, max: 100 }).withMessage('Repository owner must be 1-100 characters'),
+  body('name').optional().isLength({ min: 1, max: 100 }).withMessage('Repository name must be 1-100 characters'),
+  body('fullName').optional().isLength({ min: 1, max: 200 }).withMessage('Repository full name must be 1-200 characters'),
+  body('isLocked').optional().isBoolean().withMessage('isLocked must be a boolean')
 ], handleValidationErrors, updateGitHubRepository); // Update GitHub repository
 router.get('/:projectId/github-repository', getGitHubRepository); // Get GitHub repository
 router.put('/:projectId/github-repository/lock', lockGitHubRepository); // Lock GitHub repository
