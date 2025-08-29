@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://your-backend-domain.com/api/$1"
+      "destination": "https://code-cohort-aoac.vercel.app/api/$1"
     }
   ],
   "builds": [
