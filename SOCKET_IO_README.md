@@ -17,7 +17,6 @@ The Socket.IO implementation provides real-time communication for:
 ```javascript
 const { Server } = require('socket.io');
 
-// Enhanced Socket.IO configuration
 const io = new Server(server, {
   cors: {
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
