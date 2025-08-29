@@ -1,34 +1,19 @@
 import React from 'react';
 import CodeBlock from './CodeBlock';
-import { parseMessageContent, formatInlineCode } from '../../utils/codeParser';
+import { parseMessageContent } from '../../utils/codeParser';
 
-const MessageContent = ({ content, className = '' }) => {
-  const parsedContent = parseMessageContent(content);
+// Simple message content renderer - no special code block handling
+const MessageContent = ({ content, parts, className = '' }) => {
+  // Always treat everything as text content
+  const textContent = content || '';
   
   return (
-    <div className={`message-content ${className}`}>
-      {parsedContent.map((part, index) => {
-        if (part.type === 'code') {
-          return (
-            <CodeBlock
-              key={index}
-              code={part.content}
-              language={part.language}
-              className="my-2"
-            />
-          );
-        } else {
-          // Handle inline code and regular text
-          const formattedText = formatInlineCode(part.content);
-          return (
-            <div
-              key={index}
-              className="text-content"
-              dangerouslySetInnerHTML={{ __html: formattedText }}
-            />
-          );
-        }
-      })}
+    <div className={`message-content ${className} max-w-full overflow-hidden`}>
+      <div className="text-content break-words">
+        <span className="whitespace-pre-wrap">
+          {textContent}
+        </span>
+      </div>
     </div>
   );
 };

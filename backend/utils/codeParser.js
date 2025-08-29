@@ -25,9 +25,12 @@ const languagePatterns = {
     /std::/
   ],
   c: [
-    /\b(?:#include|printf|scanf|malloc|free)\b/,
+    /\b(?:#include|printf|scanf|malloc|free|struct|void|int|char|float|double|return)\b/,
     /\.c$|\.h$/,
-    /%d|%s|%c/
+    /%d|%s|%c/,
+    /\bstruct\s+\w+/,
+    /\*\w+/,
+    /\w+\s*\*\*/
   ],
   html: [
     /<\/?[a-z][\s\S]*>/i,
@@ -102,101 +105,12 @@ const parseMessageContent = (content) => {
     };
   }
 
-  const parts = [];
-  const lines = content.split('\n');
-  let currentText = '';
-  let inCodeBlock = false;
-  let codeContent = '';
-  let codeLanguage = '';
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    
-    // Check for @code prefix
-    if (line.trim().startsWith('@code')) {
-      // Save any accumulated text
-      if (currentText.trim()) {
-        parts.push({ type: 'text', content: currentText.trim() });
-        currentText = '';
-      }
-      
-      // Check if code is on the same line (single-line format)
-      const singleLineMatch = line.match(/@code\s*(\w+)?\s*(.+)/);
-      if (singleLineMatch && singleLineMatch[2] && singleLineMatch[2].trim()) {
-        // Single-line code block
-        const language = singleLineMatch[1] || '';
-        const code = singleLineMatch[2].trim();
-        const detectedLang = language || detectLanguage(code);
-        parts.push({
-          type: 'code',
-          content: code,
-          language: detectedLang
-        });
-        continue;
-      }
-      
-      // Multi-line code block - extract language if specified after @code
-      const langMatch = line.match(/@code\s+(\w+)/);
-      codeLanguage = langMatch ? langMatch[1] : '';
-      inCodeBlock = true;
-      continue;
-    }
-    
-    // Check for end of code block (empty line or @end)
-    if (inCodeBlock && (line.trim() === '' || line.trim() === '@end')) {
-      if (codeContent.trim()) {
-        const detectedLang = codeLanguage || detectLanguage(codeContent);
-        parts.push({
-          type: 'code',
-          content: codeContent.trim(),
-          language: detectedLang
-        });
-      }
-      codeContent = '';
-      codeLanguage = '';
-      inCodeBlock = false;
-      continue;
-    }
-    
-    if (inCodeBlock) {
-      codeContent += line + '\n';
-    } else {
-      currentText += line + '\n';
-    }
-  }
-  
-  // Handle end of message
-  if (inCodeBlock && codeContent.trim()) {
-    const detectedLang = codeLanguage || detectLanguage(codeContent);
-    parts.push({
-      type: 'code',
-      content: codeContent.trim(),
-      language: detectedLang
-    });
-  } else if (currentText.trim()) {
-    parts.push({ type: 'text', content: currentText.trim() });
-  }
-  
-  // If no parts were created, return original content as text
-  if (parts.length === 0) {
-    parts.push({ type: 'text', content: content });
-  }
-  
-  // Determine message type
-  const hasCode = parts.some(part => part.type === 'code');
-  const hasText = parts.some(part => part.type === 'text');
-  
-  let messageType = 'text';
-  if (hasCode && hasText) {
-    messageType = 'mixed';
-  } else if (hasCode) {
-    messageType = 'code';
-  }
-  
-  return { messageType, parsedContent: parts };
-};
-
-module.exports = {
+  // Simply return all content as text - no special @code processing
+  return { 
+    messageType: 'text', 
+    parsedContent: [{ type: 'text', content: content }] 
+  };
+};module.exports = {
   detectLanguage,
   parseMessageContent
 };

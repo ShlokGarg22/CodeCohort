@@ -40,7 +40,8 @@ const ActiveProblems = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await problemService.getProblems();
+      // Request more problems for home page - use a high limit to show all active problems
+      const response = await problemService.getProblems({ limit: 100 });
       if (response.success) {
         setProblems(response.problems || []);
       } else {

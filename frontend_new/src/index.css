@@ -24,17 +24,101 @@ code {
   margin: 8px 0;
   max-width: 100%;
   background: white;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .code-block-container pre {
   margin: 0 !important;
   border-radius: 0 !important;
+  overflow: hidden !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  box-sizing: border-box !important;
+}
+
+.code-block-container code {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  word-wrap: break-word !important;
+  max-width: 100% !important;
+  display: block !important;
+  box-sizing: border-box !important;
+}
+
+/* Specific overrides for react-syntax-highlighter */
+.code-block-container .token-line {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+}
+
+.code-block-container [class*="language-"] {
+  overflow: hidden !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Force all syntax highlighter elements to respect container bounds */
+.code-block-container * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* Override for messages in colored backgrounds */
 .message-content .code-block-container {
   background: white;
   border: 1px solid #d1d5db;
+}
+
+/* Additional overflow protection for chat messages */
+.chat-message-container {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chat-message-container * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Specific handling for very long lines in code blocks */
+.code-block-container .token {
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+}
+
+/* Force break long strings that don't have spaces */
+.code-block-container .token.string,
+.code-block-container .token.url {
+  word-break: break-all !important;
+}
+
+/* Chat input textarea styles */
+.chat-input-textarea {
+  field-sizing: content;
+  transition: height 0.1s ease;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.chat-input-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
 }
 
 .inline-code {
@@ -49,11 +133,16 @@ code {
 .message-content {
   word-wrap: break-word;
   overflow-wrap: break-word;
+  max-width: 100%;
+  width: 100%;
 }
 
 .text-content {
   margin: 4px 0;
   line-height: 1.5;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 /* Dark theme for inline code */

@@ -3,18 +3,64 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check } from 'lucide-react';
 
+// Custom theme with better line wrapping
+const customTheme = {
+  ...vscDarkPlus,
+  'code[class*="language-"]': {
+    ...vscDarkPlus['code[class*="language-"]'],
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    overflowWrap: 'break-word',
+    wordWrap: 'break-word'
+  },
+  'pre[class*="language-"]': {
+    ...vscDarkPlus['pre[class*="language-"]'],
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    overflowWrap: 'break-word',
+    wordWrap: 'break-word',
+    overflow: 'hidden'
+  }
+};
+
 const CodeBlock = ({ code, language, className = '' }) => {
   const [copied, setCopied] = useState(false);
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(code);
+      // Ensure proper line breaks are preserved when copying
+      const formattedCode = code.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      await navigator.clipboard.writeText(formattedCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy code:', err);
     }
   };
+
+  // Ensure the code has proper line breaks
+  const normalizedCode = typeof code === 'string' ? code.replace(/\\n/g, '\n') : code;
+
+  // If SyntaxHighlighter fails, use a simple pre tag
+  const SimpleCodeBlock = () => (
+    <pre
+      style={{
+        margin: 0,
+        padding: '12px',
+        backgroundColor: '#1e1e1e',
+        color: '#d4d4d4',
+        fontSize: '13px',
+        lineHeight: '1.4',
+        fontFamily: 'monospace',
+        whiteSpace: 'pre',
+        overflow: 'auto',
+        borderRadius: '0 0 6px 6px',
+        maxWidth: '100%'
+      }}
+    >
+      {normalizedCode}
+    </pre>
+  );
 
   return (
     <div className={`code-block-container ${className}`}>
@@ -38,20 +84,34 @@ const CodeBlock = ({ code, language, className = '' }) => {
           )}
         </button>
       </div>
-      <div className="relative">
+      <div className="relative overflow-hidden w-full">
+        {/* Always use SyntaxHighlighter for consistent code formatting */}
         <SyntaxHighlighter
           language={language || 'text'}
-          style={vscDarkPlus}
+          style={customTheme}
           customStyle={{
             margin: 0,
             borderRadius: '0 0 6px 6px',
-            fontSize: '14px',
-            lineHeight: '1.5'
+            fontSize: '13px',
+            lineHeight: '1.4',
+            padding: '12px',
+            maxWidth: '100%',
+            width: '100%',
+            whiteSpace: 'pre',
+            fontFamily: 'monospace'
           }}
-          showLineNumbers={code.split('\n').length > 10}
-          wrapLines={true}
+          showLineNumbers={normalizedCode.split('\n').length > 1}
+          wrapLines={false}
+          wrapLongLines={false}
+          codeTagProps={{
+            style: {
+              whiteSpace: 'pre',
+              wordWrap: 'normal',
+              overflowWrap: 'normal'
+            }
+          }}
         >
-          {code}
+          {normalizedCode}
         </SyntaxHighlighter>
       </div>
     </div>

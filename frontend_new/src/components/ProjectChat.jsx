@@ -241,7 +241,9 @@ const ProjectChat = ({ projectId }) => {
   }, [messages.length]);
 
   const send = async () => {
-    const content = input.trim();
+    // Preserve internal newlines but trim only spaces/tabs at start/end of each line
+    const content = processContent(input);
+    
     // If an image is selected, send image (with optional caption)
     if (imageFile) {
       await sendImage();
@@ -313,7 +315,9 @@ const ProjectChat = ({ projectId }) => {
     try {
       setUploading(true);
       // Upload via REST to handle multipart and cloud storage
-      const saved = await chatService.sendImageMessage(projectId, imageFile, { content: input.trim() });
+      // Preserve newlines in image captions too
+      const content = processContent(input);
+      const saved = await chatService.sendImageMessage(projectId, imageFile, { content });
       // Optimistic add; de-dup with onNew handler
       setMessages((prev) => {
         const exists = prev.some((m) => m._id === saved?._id);
@@ -339,6 +343,11 @@ const ProjectChat = ({ projectId }) => {
   const onInput = (e) => {
     const val = e.target.value;
     setInput(val);
+    
+    // Auto-resize textarea based on content
+    e.target.style.height = 'auto';
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+    
     if (!socket || !isAuthenticated) return;
     socket.emit('typing:update', { projectId, isTyping: true });
     clearTimeout(typingTimeoutRef.current);
@@ -348,7 +357,22 @@ const ProjectChat = ({ projectId }) => {
   };
 
   const handleInsertCode = (codeTemplate) => {
-    setInput(prev => prev + codeTemplate);
+    // Code insertion disabled
+  };
+
+  // Helper to check if input has any non-whitespace content
+  const hasContent = (text) => /\S/.test(text || '');
+
+  // Helper to process input content
+  // - Preserve indentation and internal newlines
+  // - Remove only leading/trailing blank lines
+  const processContent = (text) => {
+    if (typeof text !== 'string') return '';
+    // Normalize newlines then strip empty lines at the start/end only
+    const normalized = text.replace(/\r\n/g, '\n');
+    return normalized
+      .replace(/^(?:\s*\n)+/, '')   // leading empty lines
+      .replace(/(?:\n\s*)+$/, ''); // trailing empty lines
   };
 
   return (
@@ -372,7 +396,7 @@ const ProjectChat = ({ projectId }) => {
           <AvatarFallback>{isAi ? 'AI' : (m.sender?.fullName || m.sender?.username || 'U').charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
               )}
-              <div className={`${mine ? 'bg-blue-600 text-white' : (isAi ? 'bg-violet-50 text-gray-900' : 'bg-white text-gray-900')} border rounded-md p-3 max-w-[80%]`}>
+              <div className={`${mine ? 'bg-blue-600 text-white' : (isAi ? 'bg-violet-50 text-gray-900' : 'bg-white text-gray-900')} border rounded-md p-3 max-w-[80%] min-w-0 chat-message-container overflow-hidden`}>
                 <div className={`text-xs font-medium ${mine ? 'text-blue-100' : 'text-gray-600'}`}>
           {mine ? 'You' : (isAi ? 'AI Assistant' : (m.sender?.fullName || m.sender?.username || 'User'))}
                   {m.edited && <span className={`ml-1 text-[10px] ${mine ? 'text-blue-200' : 'text-gray-400'}`}>(edited)</span>}
@@ -384,7 +408,8 @@ const ProjectChat = ({ projectId }) => {
                   isAi
                     ? <div className="text-sm prose prose-sm max-w-none [&_a]:break-words">{renderAiContent(contentToShow)}</div>
                     : <MessageContent 
-                        content={contentToShow} 
+                        content={contentToShow}
+                        parts={(m.parsedContent && Array.isArray(m.parsedContent) && m.parsedContent.length) ? m.parsedContent : undefined}
                         className={`text-sm ${mine ? 'text-white' : 'text-gray-900'}`}
                       />
                 )}
@@ -420,14 +445,24 @@ const ProjectChat = ({ projectId }) => {
               >Remove</button>
             </div>
           )}
-          <input
+          <textarea
             value={input}
             onChange={onInput}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder="Type a message or use @code for code blocks..."
-            className="flex-1 border rounded-md px-3 py-2 text-sm"
+            onKeyDown={(e) => { 
+              if (e.key === 'Enter' && !e.shiftKey) { 
+                e.preventDefault(); 
+                send(); 
+              }
+            }}
+            placeholder="Type a message... (Shift+Enter for new line)"
+            className="flex-1 border rounded-md px-3 py-2 text-sm resize-none min-h-[40px] max-h-[120px] overflow-y-auto chat-input-textarea"
+            rows={1}
+            style={{
+              height: 'auto',
+              minHeight: '40px'
+            }}
           />
-          <Button onClick={send} disabled={uploading || (!imageFile && !input.trim())}>
+          <Button onClick={send} disabled={uploading || (!imageFile && !hasContent(input))}>
             {imageFile ? (uploading ? 'Uploading...' : 'Send') : 'Send'}
           </Button>
         </div>
