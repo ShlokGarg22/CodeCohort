@@ -33,6 +33,11 @@ class AuditLogger {
   }
 
   async writeLog(logEntry, type = 'audit') {
+    // If running on Vercel, log to console only (read-only fs)
+    if (process.env.VERCEL) {
+      console.log(`[${type.toUpperCase()} LOG]`, logEntry.trim());
+      return;
+    }
     try {
       const fileName = this.getLogFileName(type);
       await fs.appendFile(fileName, logEntry);
